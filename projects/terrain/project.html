@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+		<title>Terrain!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="topnav">
+        <a href="index.html">Home</a>
+        <a class="active" href="projects.html">Projects</a>
+        <a href="https://www.linkedin.com/in/patrick-ribas/">LinkedIn</a>
+        <a href="Patrick_Ribas_Resume.pdf">Resume</a>
+        <a href="contact.html">Contact</a>
+    </div>
+    <div class="title">
+        Generating Terrain by Creating Meshes of Random Points
+    </div>
+    <div class="main">
+        This project is just starting! There's not much here yet.
+    </div>
+    <div class="three">
+    <script src="js/three.js"></script>
+		<script>
+			// Our Javascript will go here.
+            var scene = new THREE.Scene();
+            x = window.innerWidth - 25;
+            y = window.innerHeight - 300
+            var camera = new THREE.PerspectiveCamera( 75,x/y, 0.1, 1000 );
+            var renderer = new THREE.WebGLRenderer();
+            renderer.setSize( x, y, false );
+            document.body.appendChild( renderer.domElement );
+
+            var geometry = new THREE.BoxGeometry();
+            var material = new THREE.MeshBasicMaterial( { color: 0x0000ff } );
+            var cube = new THREE.Mesh( geometry, material );
+            scene.add( cube );
+            camera.position.z = 5;
+
+            function animate() {
+                requestAnimationFrame( animate );
+                cube.rotation.x += 0.01;
+                cube.rotation.y += 0.01;
+                renderer.render( scene, camera );
+            }
+            animate();
+        </script>
+    </div>
+    <div class="main">
+        Lorem ipsum dolorem sit sic amet.
+    </div>
+</body>
+</html>
