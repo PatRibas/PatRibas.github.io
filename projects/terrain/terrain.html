@@ -21,12 +21,12 @@
     </div>
     <div class="three">
     <script src="js/three.js"></script>
-		<script>
+		<script type="module">
             
             // setup 
             var scene = new THREE.Scene();
-            screen_x = window.innerWidth - 25;
-            screen_y = window.innerHeight - 300;
+            var screen_x = window.innerWidth - 25;
+            var screen_y = window.innerHeight - 300;
             var camera = new THREE.PerspectiveCamera( 75,screen_x/screen_y, 0.1, 1000 );
             var renderer = new THREE.WebGLRenderer();
             renderer.setSize( screen_x, screen_y, false );
@@ -34,11 +34,24 @@
 
 
             // main
-            var geometry = new THREE.BoxGeometry();
-            var material = new THREE.MeshBasicMaterial( { color: 0x0000ff } );
-            var cube = new THREE.Mesh( geometry, material );
-            scene.add( cube );
+            var dotGeometry = new THREE.Geometry();
+            for ( var i = 0; i < 10; i++ )
+            {
+                for ( var j = 0; j < 10; j++ )
+                {
+                    dotGeometry.vertices.push(new THREE.Vector3( i, j, 0 ));
+                    dotGeometry.vertices.push(new THREE.Vector3( -i, -j, 0 ));
+                }
+            }
+            var dotMaterial = new THREE.PointsMaterial( { size: 5, sizeAttenuation: false } );
+            var dot = new THREE.Points( dotGeometry, dotMaterial );
+            scene.add( dot );
+
+
+            camera.position.x = 0;
+            camera.position.y = 0;
             camera.position.z = 5;
+
 
 
             // functions
@@ -55,9 +68,8 @@
 
             }
             function animate() { // called every frame
+                camera.rotation.z += Math.PI / 1000
                 requestAnimationFrame( animate );
-                cube.rotation.x += 0.01;
-                cube.rotation.y += 0.01;
                 renderer.render( scene, camera );
             }
             animate();
