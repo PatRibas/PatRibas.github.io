@@ -17,33 +17,92 @@
         Randomly Generating Terrain
     </div>
     <div class="main">
-        The goal of this project is to infinitely generate a landscape. 
+        The goal of this project is to infinitely generate a landscape with a set of arbitrary points. 
+        Typically, this is done with a noise function on a grid. 
+        You would generate a uniform grid of points like this (picture made with matplotlib):
         <br>
-        Hold W to go forward!
+        <img src="points.png"> </img>
         <br>
+        Then, you would use some function or input to generate the height of a terrain. 
+        This is a very quick and easy way to get good results, especially with functions that make really good terrain approximations, 
+        like Perlin noise or some variant of Fractional Brownian Motion  
+        ("fBm", see <a href="https://www.classes.cs.uchicago.edu/archive/2015/fall/23700-1/final-project/MusgraveTerrain00.pdf">here</a></a>). 
+        However, what if your underlying points are not uniformly spaced? For example:
+        <br>
+        <img src="rand_points.png"> </img>
+        <br>
+        In the grid exmaple, it was pretty easy to make a nice, efficient mesh from those points.
+        But in the more random one, that's not true anymore. 
+        Admittedly, there's not really an application where you are building a terrain mesh <i>and</i> your data is weirdly distributed like this, so there's not really much of a point in recreating this project. 
+        If all you want to do is make a pretty terrain, then feel free to stop reading here!
+        <br>
+        <br>
+        Since a mesh is (usually) a collection of triangles, we can equivalently view the problem "creating a mesh for our terrain" as "triangulating the points that deifne our terrain". 
+        In this sense, the best mesh we can generate will be one with as few triangles as possible, or at least one that tends to minimize tiny triangles. 
+        I've chosen the <a href="https://en.wikipedia.org/wiki/Delaunay_triangulation">Delaunay triangulation</a>, as it does precisely that.
+        <br>
+        <br>
+        In order to construct the Delaunay triangulation of a set of points, we need to pick an algorithm.
+        The big contenders are the incremental construction that directly produces a Delaunay triangulation, or constructing a <a href="https://en.wikipedia.org/wiki/Voronoi_diagram">Voronoi diagram</a>, the <a href="https://en.wikipedia.org/wiki/Dual_graph">dual</a> of a Delaunay triangulation, and constructing the triangulation quickly from the dual (for example, by traversing the half-edges of a <a href="https://en.wikipedia.org/wiki/Doubly_connected_edge_list">DCEL</a> Voronoi diagram to find the edges of our triangles).
+        This picture from <a href="http://www.cs.umd.edu/class/spring2020/cmsc754/Lects/cmsc754-spring2020-lects.pdf">David Mount</a> should give a good idea of what's going on here, where the blue is the Voronoi diagram, and the black is the triangulation:
+        <br>
+        <img src="del_vor.png">
+        <br>
+        It's worth noting that we can ignore the "height" of the points, and find this triangulation in the plane.
+        This gives us a good reason to pick the Voronoi construction: we can randomly generate points in 2D, and use features of the Voronoi diagram (e.g. site area) to help determine our heights! 
+        The mathematically well-define fBm from above typically takes a noise function/random distribution of points as an input. 
+        Here is an example of a grid terrain which uses fBm with white noise to generate heights:
+        <br>
+        <img src="fBm_white.png">
+        <br>
+        However, the one we program can take anything. 
+        We can feed it site area to influence heights, and since the sites are randomly generated, the result is very similar in a practical sense to a random distribution.
+        <br>
+        <br>
+        Another reason to choose the Voronoi construction is the "infinite" part of the landscape. 
+        An algorithmically relevant part of the incremental construction is that we insert points in a random order.
+        If we are creating new points as we go along, either this assumption is invalidated, or we have to re-make the mesh every time we generate new terrain, neither of which is particularly efficient.
+        Instead, if we make a Voronoi diagram with, say, <a href="https://en.wikipedia.org/wiki/Fortune%27s_algorithm">Fortune's algorithm</a>, then adding new points is easy as long as we maintain the sweep line and beach line status from before. 
+        Although this diagram is not perfect, imagine that our sweep line finished where the red line is, and then we generated more points after: 
+        <br>
+        <img src="vor_gen.png">
+        <br>
+        Then, we just have to continue running Fortune's algorithm, as if our point set was always larger.
+        With all of that out of the way, let's consider the full algorithm. At a very high level, this algorithm looks something like this:
+        <br>
+        <br>
+        <img src="algo.png">
+        <br>
+        <br>
+        So, what does this kind of terrain look like? Here's a few pictures:
+        <br>
+        <br>
+        <img src="vor_1.png">
+        <img src="vor_4.png">
+        <img src="vor_3.png">
+        <img src="vor_2.png">
+        <br>
+        And honestly? I kinda hate it. It's really ugly, so I'm going to leave up a demo with a uniform grid that makes prettier terrains using Perlin noise. The weird, pointy mountains make some amount of sense. 
+        If sites with a greater area influnce height (I made them tend to be taller when the sites have bigger areas), then whenever a point has a larger site, it will pop out into a large mountain; conversely, denser sections of points will be little valleys that are hard to make out with the bigger mountains on the side. 
+        It looks... weird. So instead, enjoy a good-looking terrain! Thanks to <a href="https://github.com/josephg/noisejs">this Perlin noise library</a> for making this typical terrain demo. I can safely advise people to not follow this method that I spent a semester building... 
+        <br>
+        <br>
+        The controls: Press W, and you will go forward.
     </div>
     <div class="three">
+    <script type="text/javascript" src="js/perlin.js"></script>
     <script src="js/three.js"></script>
 		<script type="module">
             
-            // fbm setup
-            var exponent_array = [];
-            var frequency = 1.0;
-            var MAX_OCTAVES = 8;
-            var lacunarity = 2;
-            var H = 0.9;
-            for ( var i = 0; i < MAX_OCTAVES; i++ ) {
-                exponent_array.push( Math.pow(frequency, -H) );
-                frequency *= lacunarity;
-            }
+            
 
             // setup 
             var scene = new THREE.Scene();
             scene.background = new THREE.Color( 0x87CEEB );
-            //scene.fog = new THREE.Fog( 0x050505, 10, 25 );
+            //scene.fog = new THREE.Fog( 0x050505, 10, 50 );
             var screen_x = window.innerWidth - 25;
             var screen_y = window.innerHeight - 300;
-            var camera = new THREE.PerspectiveCamera( 75,screen_x/screen_y, 0.1, 1000 );
+            var camera = new THREE.PerspectiveCamera( 75, screen_x/screen_y, 0.1, 1000 );
             var renderer = new THREE.WebGLRenderer();
             renderer.setSize( screen_x, screen_y, false );
             document.body.appendChild( renderer.domElement );
@@ -58,17 +117,22 @@
             var i = 0;
             var color = new THREE.Color();
             var WIDTH = 30;
-            for ( i = 0; i < 30; i += 1 )
+            var I_INC = 1;
+            function perlin(i,j) {
+                return noise.perlin2(i/10, j/10)*4;// + noise.simplex2(Math.random()/100, Math.random()/100);
+            }
+            for ( i = 0; i < WIDTH * 2; i += I_INC )
             {
                 var row = []
-                for ( var j = -WIDTH; j <= WIDTH; j++ )
+                for ( var j = -WIDTH; j <= WIDTH; j += 1 )
                 {
-                    var y = 0;
+                    var y = perlin(i,j);
                     color.setRGB( 0, y, 0 );
-                    row.push([ new THREE.Vector3(-i, y - 1,  j), color ]);
+                    row.push([ new THREE.Vector3(-i , y - 1,  j ), color ]);
                 }
                 positions.push(row)
             }
+
             var vecPos = []
             for ( var k = 0; k < positions.length - 1; k += 1 ) 
             {
@@ -118,24 +182,6 @@
 
             }
 
-            function fBm( point, octaves, basis ) {
-                var value = 0;
-                for ( var i = 0; i < octaves; i++ ) {
-                    value += basis( point ) * exponent_array[i];
-                    point[0] *= lacunarity;
-                    point[1] *= lacunarity;
-                    point[2] *= lacunarity;
-                }
-                if ( octaves - Math.floor(octaves) > 0){
-                    value += (octaves - Math.floor(octaves)) * basis(point) * exponent_array[i];
-                }
-                return value;
-            }
-
-            function whiteNoise( point ) {
-                return Math.random();
-            }
-
             document.addEventListener("keydown", onDocumentKeyDown, false);
             function onDocumentKeyDown(event) {
                 var keyCode = event.which;
@@ -153,16 +199,18 @@
                 {
                     scene.remove(mesh);
                     var row = [];
-                    for ( var j = -WIDTH; j <= WIDTH; j++ )
+                    for ( var j = -WIDTH; j <= WIDTH; j += 1 )
                     {
-                        var y = fBm([-i, 0, j], MAX_OCTAVES, whiteNoise);
+                        var y = perlin(i,j);
                         color.setRGB( 0, y, 0 );
                         row.push([ new THREE.Vector3(-i, y - 1,  j), color ]);
 
                     }
                     positions.push(row);
-                    i += 1;
-                    camera.position.x -= 1
+                    positions.shift();  
+                    i += I_INC;
+                    camera.position.x -= I_INC; 
+                    // trivial mesh creation for demo
                     var vecPos = []
                     for ( var k = 0; k < positions.length - 1; k += 1 ) 
                     {
@@ -192,45 +240,7 @@
                     scene.add( mesh );
 
                 }
-                else if  ( keyCode == S )
-                {
-                    camera.position.x += 1
-                    light.position.set( camera.position.x, camera.position.y + 1, camera.position.z );
-
-                }
-                
-                else if  ( keyCode == A )
-                {
-                    camera.position.z += 1
-                    light.position.set( camera.position.x, camera.position.y + 1, camera.position.z );
-
-                }
-                else if  ( keyCode == D )
-                {
-                    camera.position.z -= 1
-                    light.position.set( camera.position.x, camera.position.y + 1, camera.position.z );
-
-                }
-                else if ( keyCode == Q )
-                {
-                    camera.rotation.y += Math.PI / 8
-                }
-                else if ( keyCode == E )
-                {
-                    camera.rotation.y -= Math.PI / 8
-                }
-                else if  ( keyCode == space )
-                {
-                    camera.position.y += 1
-                    light.position.set( camera.position.x, camera.position.y + 1, camera.position.z );
-
-                }
-                else if  ( keyCode == shift )
-                {
-                    camera.position.y -= 1
-                    light.position.set( camera.position.x, camera.position.y + 1, camera.position.z );
-
-                }
+            
             }
             function animate() { // called every frame
                 requestAnimationFrame( animate );
