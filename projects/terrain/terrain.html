@@ -184,6 +184,8 @@
 
             document.addEventListener("keydown", onKeyDown, false);
             document.addEventListener("mousedown", onMouseDown, false);
+            document.addEventListener("mouseup", onMouseUp, false);
+
             function onKeyDown(event) {
                 var keyCode = event.which;
                 var W = 87;
@@ -192,9 +194,12 @@
                     updateScene();
                 }
             }
-
+            var mouseIsDown = false;
             function onMouseDown(event) {
-                updateScene();
+                mouseIsDown = true;
+            }
+            function onMouseUp(event) {
+                mouseIsDown = false;
             }
 
             function updateScene() {
@@ -242,6 +247,9 @@
             }
 
             function animate() { // called every frame
+                if ( mouseIsDown == true ) {
+                    updateScene();
+                }
                 requestAnimationFrame( animate );
                 renderer.render( scene, camera );
             }
