@@ -1,0 +1,556 @@
+<html><head>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        table, th, td {
+          text-align: center;
+          font-family: Tahoma, Geneva, sans-serif;
+          background-color: #FFFF66;
+        }
+        th {
+            font-size: 30px;
+        }
+        td {
+            font-size: 25px;
+        }
+    </style>
+<meta http-equiv="content-type" content="text/html; charset=windows-1252">
+    <title>CSCI-510: Final Exam</title>
+    
+    <!-- include vertex shaders -->
+
+    <script id="wireframe-V" type="x-shader/x-vertex">
+        #version 300 es
+        in vec4 aVertexPosition;
+        in vec3 bary;
+        
+        // Model transforms
+        uniform mat4 modelT;
+        
+        // view transform
+        uniform mat4 viewT;
+        
+        // projection tramsform
+        uniform mat4 projT;
+        
+        out vec3 vbc;
+
+        void main()
+        {
+            gl_Position = projT * viewT * modelT * aVertexPosition;
+            vbc = bary;
+        }
+    </script>
+
+     <!-- wireframe fragment Shaders -->
+     <script id="wireframe-F" type="x-shader/x-fragment">
+         #version 300 es
+         precision mediump float;
+         
+         in vec3 vbc;
+
+         // Color that is the result of this shader
+         out vec4 fragColor;
+
+         void main(void) {
+             
+             fragColor = vec4( 1.0, 1.0, 0.0, 1.0 );
+             // if on the edge, draw black, otherwsie, draw grey
+             if (vbc.x < 0.02 || vbc.y < 0.02 || vbc.z < 0.02) {
+                 fragColor = vec4(1.0, 1.0, 1.0, 1.0);
+             }
+         }
+     </script>
+
+
+     <script id="glass-V" type="x-shader/x-vertex">
+    #version 300 es
+    precision mediump float;
+    // Vertex shader for phong illumination model
+    // Per vertex shading
+
+    // Vertex Attributes
+    in vec3 aVertexPosition; // in model coords
+    in vec3 aNormal;    // in model coords
+    in vec2 aUV;
+
+    // outputs
+    out vec3 N;
+    out vec3 L;
+    out vec3 V;
+    out vec2 UV;
+
+    // Transforms
+    uniform mat4 modelT;
+    uniform mat4 viewT;
+    uniform mat4 projT;
+
+    // Light parameters
+    uniform vec3 ambientLight;
+    uniform vec3 lightPosition;   // in world coords
+    uniform vec3 lightColor;
+
+    // object color parameters
+    uniform vec3 baseColor;
+    uniform vec3 specHighlightColor;
+
+    // Phong parameters
+    uniform float ka;
+    uniform float kd;
+    uniform float ks;
+    uniform float ke;
+
+    void main()
+    {
+        // All calculations will be done in camera space
+        mat4 modelView = viewT * modelT;
+        mat4 normalmatrix = transpose(inverse (modelView));
+
+        vec3 vcam = (modelView * vec4(aVertexPosition, 1.0)).xyz;
+        vec3 lcam = (viewT * vec4(lightPosition, 1.0)).xyz;
+        vec3 ncam = (normalmatrix * vec4(aNormal, 1.0)).xyz;
+        ncam = faceforward (ncam, vcam, ncam);
+
+        // vectors to pass on to Fragment Shader
+        N = normalize (ncam);
+        L = normalize (lcam - vcam);
+        V = -normalize (vcam);
+	UV = aUV;
+
+        // transform vertex to clip space
+        gl_Position = projT * viewT * modelT * vec4 (aVertexPosition, 1.0);
+    }
+    </script>
+    <!-- fragment Shader -->
+     <script id="glass-F" type="x-shader/x-fragment">
+         #version 300 es
+
+         // Fragment shader for phong illumination model
+         // Per vertex shading
+
+
+         precision mediump float;
+             
+         // calculated by vertex shader and passsed to fragment
+         in vec3 N;
+         in vec3 L;
+         in vec3 V;
+         in vec2 UV;
+
+	 uniform sampler2D tex;
+
+         // Light parameters
+         uniform vec3 ambientLight;
+         uniform vec3 lightColor;
+
+         // object color parameters
+         uniform vec3 baseColor;
+         uniform vec3 specHighlightColor;
+
+         // Phong parameters
+         uniform float ka;
+         uniform float kd;
+         uniform float ks;
+         uniform float ke;
+
+         // Color that is the result of this shader
+         out vec4 fragColor;
+
+         void main(void) {
+             // individual components
+             vec3 R = normalize (reflect (-L, N));
+             
+             vec3 ambient = ka * ambientLight * baseColor;
+             vec3 diffuse = kd * lightColor * baseColor * max (dot(L, N), 0.0);
+             vec3 spec = ks * specHighlightColor * lightColor * pow (max(dot(R, V), 0.0), ke);
+             
+             // final color
+             fragColor = texture(tex, UV);
+	     fragColor += vec4 (ambient + diffuse + (spec / 8.0), 1.0);
+         }
+
+    </script>
+<script id="bump-V" type="x-shader/x-vertex">
+    #version 300 es
+    precision mediump float;
+    // Vertex shader for phong illumination model
+    // Per vertex shading
+
+    // Vertex Attributes
+    in vec3 aVertexPosition; // in model coords
+    in vec3 aNormal;    // in model coords
+    in vec2 aUV;
+
+    // outputs
+    out vec3 N;
+    out vec3 L;
+    out vec3 V;
+    out vec2 UV;
+    out vec3 L2;
+
+    // Transforms
+    uniform mat4 modelT;
+    uniform mat4 viewT;
+    uniform mat4 projT;
+
+    // Light parameters
+    uniform vec3 ambientLight;
+    uniform vec3 lightPosition;   // in world coords
+    uniform vec3 lightColor;
+    uniform vec3 lightPosition2;
+    uniform vec3 lightColor2;
+
+    // object color parameters
+    uniform vec3 baseColor;
+    uniform vec3 specHighlightColor;
+    uniform vec3 specHighlightColor2;
+
+    // Phong parameters
+    uniform float ka;
+    uniform float kd;
+    uniform float ks;
+    uniform float ke;
+    
+    void main()
+    {
+        // All calculations will be done in camera space
+        mat4 modelView = viewT * modelT;
+        mat4 normalmatrix = transpose(inverse (modelView));
+
+        vec3 vcam = (modelView * vec4(aVertexPosition, 1.0)).xyz;
+        vec3 lcam = (viewT * vec4(lightPosition, 1.0)).xyz;
+        vec3 lcam2 = (viewT * vec4(lightPosition2, 1.0)).xyz;
+	vec3 ncam = (normalmatrix * vec4(aNormal, 1.0)).xyz;
+        ncam = faceforward (ncam, vcam, ncam);
+
+        // vectors to pass on to Fragment Shader
+        N = normalize (ncam);
+        L = normalize (lcam - vcam);
+        L2 = normalize(lcam2 - vcam);
+	V = -normalize (vcam);
+	UV = aUV;
+        // transform vertex to clip space
+        gl_Position = projT * viewT * modelT * vec4 (aVertexPosition, 1.0);
+    }
+    </script>
+
+    
+    <!-- fragment Shader -->
+     <script id="bump-F" type="x-shader/x-fragment">
+         #version 300 es
+
+         // Fragment shader for phong illumination model
+         // Per vertex shading
+
+
+         precision mediump float;
+
+         // calculated by vertex shader and passsed to fragment
+         in vec3 N;
+         in vec3 L;
+         in vec3 V;
+	 in vec2 UV;
+	 in vec3 L2;
+         
+         // Light parameters
+         uniform vec3 ambientLight;
+         uniform vec3 lightColor;
+	 uniform vec3 lightColor2;
+
+         // object color parameters
+         uniform vec3 baseColor;
+         uniform vec3 specHighlightColor;
+	 uniform vec3 specHighlightColor2;
+
+         // Phong parameters
+         uniform float ka;
+         uniform float kd;
+         uniform float ks;
+         uniform float ke;
+
+         // Color that is the result of this shader
+         out vec4 fragColor;
+
+	  
+	 void main(void) {
+             mat3 up, down, left, right;
+	     float a = 0.2;
+	     left = mat3 ( 1.0,  0.0,     0.0, 
+                           0.0,  cos(a),  sin(a),
+                           0.0, -sin(a),  cos(a) );
+
+              up = mat3 ( cos(a),  0.0, -sin(a),
+                          0.0,     1.0,  0.0,
+                          sin(a),  0.0,  cos(a) );
+
+	      right = mat3 ( 1.0,  0.0,      0.0,
+                             0.0,  cos(-a),  sin(-a),
+		             0.0, -sin(-a),  cos(-a) );
+
+              down = mat3 ( cos(-a),  0.0, -sin(-a),
+                            0.0,      1.0,  0.0, 
+                            sin(-a),  0.0,  cos(-a) );
+
+
+	     // individual components
+             vec3 R = normalize (reflect (-L, N));
+	     vec3 R2 = normalize(reflect(-L2, N));
+	     float u,v,freq;
+	     u = UV.s;
+	     v = UV.t;
+	     freq = 20.0;
+	     vec3 n = vec3(u, v, 1.0);
+	     float umod, vmod, red;
+	     umod = mod(u * freq, 1.0);
+	     vmod = mod(v * freq, 1.0);
+	     if ( umod < 0.1 ){
+	     	n = right * n;
+             }
+	     else if ( umod > 0.9 ){
+	     	n = left * n;
+             }
+	     else if ( vmod < 0.1 ) {
+	     	n = up * n;
+	     }
+	     else if ( vmod > 0.9 ) {
+	     	n = down * n;
+	     }
+	     else{ 
+                if ( v < 0.4  ){
+			float t = 0.0;
+			freq = 400.0;
+			umod = mod(u * freq, 1.0);
+			vmod = mod(v * freq, 1.0);
+			if ( umod < 0.5 && vmod < 0.5 ) {
+				t = 1.0;
+			}
+	     		if ( t != 0.0 ) {
+				red = 0.5;
+			}
+			else {
+				red = 0.0;
+			}
+		}
+		else if ( v < 0.5  ){
+                        float t = 0.0;
+                        freq = 100.0;
+                        umod = mod(u * freq, 1.0);
+                        vmod = mod(v * freq, 1.0);
+                        if ( umod < 0.25 && vmod < 0.25 ) {
+                                t = 1.0;
+                        }
+                        if ( t != 0.0 ) {
+                                red = 0.5;
+                        }
+                        else {
+                                red = 0.0;
+                        }
+                }
+	     	else {
+	     		red = 0.0;
+	     	}
+	     }
+             vec3 ambient = ka * ambientLight * baseColor;
+             vec3 diffuse = kd * lightColor * baseColor * max (dot(L, n), 0.0);
+             vec3 spec = ks * specHighlightColor * lightColor * pow (max(dot(R, V), 0.0), ke);
+	     vec3 spec2 = ks * specHighlightColor2 * lightColor2 * pow(max(dot(R2,V), 0.0), ke);
+             // final color
+             fragColor = vec4 (ambient + diffuse + spec - (2.0 * spec2), 1.0);
+	     if ( red != 0.0 ){
+		fragColor.x *= 1.5;
+		fragColor.y *= 0.25;
+		fragColor.z *= 0.25;
+	     }
+	 }
+
+
+    </script>
+    
+    <script id="proc-V" type="x-shader/x-vertex">
+    	#version 300 es
+	precision mediump float;
+	in vec4 aVertexPosition;
+	in vec2 aUV;
+	out vec2 UV;
+	in vec3 aNormal;
+	// Model transforms
+        uniform mat4 modelT;
+
+        // view transform
+        uniform mat4 viewT;
+
+        // projection tramsform
+        uniform mat4 projT;
+
+	 // outputs
+    out vec3 N;
+    out vec3 L;
+    out vec3 V;
+
+    // Light parameters
+    uniform vec3 ambientLight;
+    uniform vec3 lightPosition;   // in world coords
+    uniform vec3 lightColor;
+
+    // object color parameters
+    uniform vec3 baseColor;
+    uniform vec3 specHighlightColor;
+
+    // Phong parameters
+    uniform float ka;
+    uniform float kd;
+    uniform float ks;
+    uniform float ke;
+
+        void main()
+        {
+	    // All calculations will be done in camera space
+        mat4 modelView = viewT * modelT;
+        mat4 normalmatrix = transpose(inverse (modelView));
+
+        vec3 vcam = (modelView * aVertexPosition).xyz;
+        vec3 lcam = (viewT * vec4(lightPosition, 1.0)).xyz;
+        vec3 ncam = (normalmatrix * vec4(aNormal, 1.0)).xyz;
+        ncam = faceforward (ncam, vcam, ncam);
+
+        // vectors to pass on to Fragment Shader
+        N = normalize (ncam);
+        L = normalize (lcam - vcam);
+        V = -normalize (vcam);
+
+            gl_Position = projT * viewT * modelT * aVertexPosition;
+            UV = aUV;
+        }
+
+
+    </script>
+     <!-- wireframe fragment Shaders -->
+     <script id="proc-F" type="x-shader/x-fragment">
+         #version 300 es
+         precision mediump float;
+
+         in vec2 UV;
+         in vec3 N;
+         in vec3 L;
+         in vec3 V;
+         
+         // Light parameters
+         uniform vec3 ambientLight;
+         uniform vec3 lightColor;
+
+         // object color parameters
+         uniform vec3 baseColor;
+         uniform vec3 specHighlightColor;
+
+         // Phong parameters
+         uniform float ka;
+         uniform float kd;
+         uniform float ks;
+         uniform float ke;
+
+         // Color that is the result of this shader
+         out vec4 fragColor;
+
+         void main(void) {
+	     float u = UV.s;
+	     float v = UV.t;
+             float freq = 10.0;
+	     vec3 R = normalize (reflect (-L, N));
+
+             vec3 ambient = ka * ambientLight * baseColor;
+             vec3 diffuse = kd * lightColor * baseColor * max (dot(L, N), 0.0);
+             vec3 spec = ks * specHighlightColor * lightColor * pow (max(dot(R, V), 0.0), ke);
+
+	     if ( mod(u * freq, 1.0) < 0.5 ){
+		if ( mod(v * freq, 1.0) > 0.5 ){
+	           fragColor = vec4( 1.0, 0.0, 0.0, 1.0 );
+	        }
+		else {
+	     	   fragColor = vec4( 1.0, 1.0, 0.0, 1.0 );
+	     	}
+	     }
+	     else {
+                if ( mod(v * freq, 1.0) < 0.5 ){
+                   fragColor = vec4( 1.0, 0.0, 0.0, 1.0 );
+                }
+                else {
+                   fragColor = vec4( 1.0, 1.0, 0.0, 1.0 );
+                }
+
+             }
+	     fragColor -= vec4(spec * 2.0, 0.0);
+         }
+
+     </script>
+
+     
+     <!-- Matrix library and code for standard transformations -->
+     <script type="text/javascript" src="CSCI-510%20Final%20Exam_files/gl-matrix-min.js"></script>
+    
+    <!-- include the main final functions -->
+    <script type="text/javascript" src="CSCI-510%20Final%20Exam_files/finalMain.js"></script>
+    
+    <!-- shape functions -->
+    <script type="text/javascript" src="CSCI-510%20Final%20Exam_files/cgIShape.js"></script>
+    <script type="text/javascript" src="CSCI-510%20Final%20Exam_files/myShapes-min.js"></script>
+    
+    <!-- keyboard functions -->
+    <script type="text/javascript" src="CSCI-510%20Final%20Exam_files/event.js"></script>
+    
+    <!-- texture images -->
+	</head><body data-new-gr-c-s-check-loaded="8.872.0" data-gr-ext-installed=""><img id="scene-texture" src="CSCI-510%20Final%20Exam_files/scene-texture.html" style="display: none;"> 
+
+
+  <script type="text/javascript">
+    // Call init once the webpage has loaded
+    window.onload = init;
+  </script>
+
+
+
+    <!--<h1>CSCI-510: Final Exam Image</h1>-->
+    <div class="topnav">
+        <a href="../../index.html">Home</a>
+        <a class="active" href="../projects.html">Projects</a>
+        <a href="https://www.linkedin.com/in/patrick-ribas/">LinkedIn</a>
+        <a href="../../Patrick_Ribas_Resume.pdf">Resume</a>
+        <a href="../../contact.html">Contact</a>
+    </div>
+    <div class="main">
+    <div class="title">
+        CSCI-510: Intro to Computer Graphics final
+    </div>
+  <table>
+      <tbody><tr>
+          <td><canvas id="webgl-canvas" width="500" height="500" >
+            Your browser does not support the HTML5 canvas element.
+          </canvas></td>
+      </tr>
+      <tr>
+	<td>
+      The goal of this final project was to create a WebGL scene that imitates a picture.
+      Here is the picture I chose, from Whitted (1981):
+      <br>
+	  <img src="CSCI-510%20Final%20Exam_files/1981-Turner_Whitted-Untitles-Ray-Traced-Spheres1979.jpg" width="368" height="270">
+	  <br>
+	  The shadows are white specular highlights that subtract from the fragment color instead of adding to it.
+	  <br>
+	  The grooves on the yellow sphere are done by procedural bump mapping.
+ Whenever the fragment is rendering on certain U/V values, the normal 
+gets rotated 30 degrees to make it look like there's a bump in the 
+sphere.
+	  <br>
+	  The red "reflections" are a procedural texture that adds some red to 
+the fragment if we are rendering certain spots on the sphere.
+	  <br>
+	  The "glass" effect is a texture created by another camera. Credits to <a href="https://webglfundamentals.org/webgl/lessons/webgl-render-to-texture.html">WebGL Fundamentals</a> for help here.
+	</td>
+      </tr>
+  </tbody></table>
+  
+  
+
+
+
+
+
+</body></html>

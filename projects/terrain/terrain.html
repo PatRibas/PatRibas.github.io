@@ -50,7 +50,7 @@
         <br>
         It's worth noting that we can ignore the "height" of the points, and find this triangulation in the plane.
         This gives us a good reason to pick the Voronoi construction: we can randomly generate points in 2D, and use features of the Voronoi diagram (e.g. site area) to help determine our heights! 
-        The mathematically well-define fBm from above typically takes a noise function/random distribution of points as an input. 
+        The mathematically well-defined fBm from above typically takes a noise function/random distribution of points as an input. 
         Here is an example of a grid terrain which uses fBm with white noise to generate heights:
         <br>
         <img src="fBm_white.png">
@@ -87,7 +87,7 @@
         It looks... weird. So instead, enjoy a good-looking terrain! Thanks to <a href="https://github.com/josephg/noisejs">this Perlin noise library</a> for making this typical terrain demo. I can safely advise people to not follow this method that I spent a semester building... 
         <br>
         <br>
-        The controls: Press W, and you will go forward.
+        The controls: Press W or click, and you will go forward.
     </div>
     <div class="three">
     <script type="text/javascript" src="js/perlin.js"></script>
@@ -182,66 +182,65 @@
 
             }
 
-            document.addEventListener("keydown", onDocumentKeyDown, false);
-            function onDocumentKeyDown(event) {
+            document.addEventListener("keydown", onKeyDown, false);
+            document.addEventListener("mousedown", onMouseDown, false);
+            function onKeyDown(event) {
                 var keyCode = event.which;
-                // these assign variables to their ascii tables
-                // is just for description
                 var W = 87;
-                var A = 65;
-                var S = 83;
-                var D = 68;
-                var Q = 81;
-                var E = 69;
-                var space = 32;
-                var shift = 16;
                 if ( keyCode == W )
                 {
-                    scene.remove(mesh);
-                    var row = [];
-                    for ( var j = -WIDTH; j <= WIDTH; j += 1 )
-                    {
-                        var y = perlin(i,j);
-                        color.setRGB( 0, y, 0 );
-                        row.push([ new THREE.Vector3(-i, y - 1,  j), color ]);
+                    updateScene();
+                }
+            }
 
-                    }
-                    positions.push(row);
-                    positions.shift();  
-                    i += I_INC;
-                    camera.position.x -= I_INC; 
-                    // trivial mesh creation for demo
-                    var vecPos = []
-                    for ( var k = 0; k < positions.length - 1; k += 1 ) 
-                    {
-                        var row1 = positions[k];
-                        var row2 = positions[k + 1];
-                        for ( var l = 0; l < row1.length - 1; l += 1) 
-                        {
-                            
-                            vecPos.push( row2[l][0] );
-                            vecPos.push( row1[l + 1][0] );
-                            vecPos.push( row1[l][0] );
-                            
-                            vecPos.push( row2[l][0] );
-                            vecPos.push( row2[l + 1][0] );
-                            vecPos.push( row1[l + 1][0] );
-                            
-                        }
+            function onMouseDown(event) {
+                updateScene();
+            }
 
-                    }
-                    
-
-                    light.position.set( camera.position.x, camera.position.y + 1, camera.position.z );
-                    var geo = new THREE.BufferGeometry().setFromPoints( vecPos );
-
-                    var mesh = new THREE.Mesh( geo, mesh_material );
-
-                    scene.add( mesh );
+            function updateScene() {
+                scene.remove(mesh);
+                var row = [];
+                for ( var j = -WIDTH; j <= WIDTH; j += 1 )
+                {
+                    var y = perlin(i,j);
+                    color.setRGB( 0, y, 0 );
+                    row.push([ new THREE.Vector3(-i, y - 1,  j), color ]);
 
                 }
-            
+                positions.push(row);
+                positions.shift();  
+                i += I_INC;
+                camera.position.x -= I_INC; 
+                // trivial mesh creation for demo
+                var vecPos = []
+                for ( var k = 0; k < positions.length - 1; k += 1 ) 
+                {
+                    var row1 = positions[k];
+                    var row2 = positions[k + 1];
+                    for ( var l = 0; l < row1.length - 1; l += 1) 
+                    {
+                        
+                        vecPos.push( row2[l][0] );
+                        vecPos.push( row1[l + 1][0] );
+                        vecPos.push( row1[l][0] );
+                        
+                        vecPos.push( row2[l][0] );
+                        vecPos.push( row2[l + 1][0] );
+                        vecPos.push( row1[l + 1][0] );
+                        
+                    }
+
+                }
+                
+
+                light.position.set( camera.position.x, camera.position.y + 1, camera.position.z );
+                var geo = new THREE.BufferGeometry().setFromPoints( vecPos );
+
+                var mesh = new THREE.Mesh( geo, mesh_material );
+
+                scene.add( mesh );
             }
+
             function animate() { // called every frame
                 requestAnimationFrame( animate );
                 renderer.render( scene, camera );
