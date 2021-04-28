@@ -184,7 +184,6 @@
 
             document.addEventListener("keydown", onKeyDown, false);
             document.addEventListener("mousedown", onMouseDown, false);
-            document.addEventListener("mouseup", onMouseUp, false);
 
             function onKeyDown(event) {
                 var keyCode = event.which;
@@ -196,10 +195,7 @@
             }
             var mouseIsDown = false;
             function onMouseDown(event) {
-                mouseIsDown = true;
-            }
-            function onMouseUp(event) {
-                mouseIsDown = false;
+                mouseIsDown = !mouseIsDown;
             }
 
             function updateScene() {
