@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+		<title>Lorem ipsum!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="topnav">
+        <a href="../../index.html">Home</a>
+        <a class="active" href="../projects.html">Projects</a>
+        <a href="https://www.linkedin.com/in/patrick-ribas/">LinkedIn</a>
+        <a href="../../Patrick_Ribas_Resume.pdf">Resume</a>
+        <a href="../../contact.html">Contact</a>
+    </div>
+    <div class="title">
+        CSCI 712: Animation HW 0
+    </div>
+    <script src="../js/three.js"></script>
+        <style>
+            body { text-align: center; }
+        </style>
+		<script>
+			// Our Javascript will go here.
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera( 75, 1, 0.1, 1000 );
+            
+            const renderer = new THREE.WebGLRenderer();
+            renderer.setSize( 512, 512 );
+            document.body.appendChild( renderer.domElement );
+
+            const geometry = new THREE.BoxGeometry();
+            const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+            const cube = new THREE.Mesh( geometry, material );
+            scene.add( cube );
+
+            var edges = new THREE.EdgesHelper( cube, 0x0000ff);
+            edges.material.linewidth = 2;
+            scene.add(edges); 
+
+            camera.position.z = 14.5;
+            camera.position.x = 10;
+            camera.position.y = 10;
+
+            var init_time = new Date();
+            var t = 0;
+            function animate() {
+                requestAnimationFrame( animate );
+                temp_date = new Date();
+                t = (temp_date.getTime() - init_time.getTime()) / 1000;
+                if ( t > 4 )
+                {
+                    t = 4;
+                }
+                cube.position.x = 5 * t;
+                cube.position.y = 5 * t;
+                var rot = (18 * t) * (Math.PI / 180);
+                cube.rotation.y = rot;
+                edges.position.x = 5 * t;
+                edges.position.y = 5 * t;
+                edges.rotation.y = rot;
+                renderer.render( scene, camera );
+            }
+            animate();
+		</script>
+    <div class="main">
+        The cube's rotation looks really slow to me... But three.js uses radians,
+         and this is definitely the conversion to degrees. I guess 18 degrees/second 
+         is rather slow.
+        <br><br>
+        I hope you don't mind the cube looking slightly off-axis due to the camera perspective!
+        The camera is at (10, 10, 14.5) and looking down the Z axis at the cube.
+        <br><br>
+        To play the animation again, simply refresh the page.
+    </div>
+</body>
+</html>
