@@ -29,7 +29,8 @@
             renderer.setSize( 512, 512 );
             document.body.appendChild( renderer.domElement );
 
-            const geometry = new THREE.BoxGeometry();
+            var n = 7;
+            const geometry = new THREE.BoxGeometry(n, n, n);
             const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
             const cube = new THREE.Mesh( geometry, material );
             scene.add( cube );
@@ -38,9 +39,9 @@
             edges.material.linewidth = 2;
             scene.add(edges); 
 
-            camera.position.z = 14.5;
-            camera.position.x = 10;
-            camera.position.y = 10;
+            camera.position.z = 15 * 5;
+            camera.position.x = 50;
+            camera.position.y = 50;
 
             var init_time = new Date();
             var t = 0;
@@ -48,9 +49,9 @@
                 requestAnimationFrame( animate );
                 temp_date = new Date();
                 t = (temp_date.getTime() - init_time.getTime()) / 1000;
-                if ( t > 4 )
+                if ( t > 20 )
                 {
-                    t = 4;
+                    t = 20;
                 }
                 cube.position.x = 5 * t;
                 cube.position.y = 5 * t;
@@ -71,7 +72,7 @@
         I hope you don't mind the cube looking slightly off-axis due to the camera perspective!
         The camera is at (10, 10, 14.5) and looking down the Z axis (which is default) at the cube with an FOV of 75.
         Three.js also seems to curiously place a camera by default with the y axis
-        as the horizontal axis of the viewport. I can assure you that this is a rotation by y, even if it's .
+        as the horizontal axis of the viewport. I can assure you that this is a rotation by y, even if it's 
         not the axis we traditionally expect to be y.
         <br><br>
         To play the animation again, simply refresh the page.
