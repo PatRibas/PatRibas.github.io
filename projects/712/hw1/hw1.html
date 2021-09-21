@@ -21,7 +21,17 @@
             body { text-align: center; }
         </style>
 		<script>
+
+            let text = "";
+            function set(a){
+                text = a;
+            }
+            
 			// Our Javascript will go here.
+            const test = fetch("https://patribas.github.io/projects/712/hw1/keyframe-input.txt")
+                .then(req => req.text())
+                .then(text => set(text));
+
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera( 75, 1, 0.1, 1000 );
             
@@ -45,30 +55,52 @@
 
             var init_time = new Date();
             var t = 0;
+            var keyframes = null;
 
-            var test = fetch("keyframe-input.txt")
-                .then(req => req.text())
-                .then(text => console.log(text));
-            
+            function parse_keyframe_info( data )
+            {
+                var lines = data.split('\n');
+                var frames = [];
+                for ( var i = 0; i < lines.length; i += 1 )
+                {
+                    var cur_data = lines[i].split(/[ ]+/);
+                    var cur_frame = [];
+                    for ( var j = 0; j < cur_data.length; j += 1 )
+                    {
+                        cur_frame.push( Number(cur_data[j]) );
+                    }
+                    frames.push( cur_frame );
+                }
+                return frames;
+            }
+
 
             function animate() {
                 requestAnimationFrame( animate );
-                temp_date = new Date();
-                t = (temp_date.getTime() - init_time.getTime()) / 1000;
-                if ( t > 20 )
+                if ( text == "" )
                 {
-                    t = 20;
+                    // since javascript is uh, not exactly designed for reading files
+                    // we have to make sure that our asynchronous text reader
+                    // has actually completed
+                    // before we crash something in three.js
+                    renderer.render( scene, camera );
                 }
-                cube.position.x = 5 * t;
-                cube.position.y = 5 * t;
-                var rot = (18 * t) * (Math.PI / 180);
-                cube.rotation.y = rot;
-                edges.position.x = 5 * t;
-                edges.position.y = 5 * t;
-                edges.rotation.y = rot;
-                renderer.render( scene, camera );
+                else
+                {
+                    if ( keyframes == null )
+                    {
+                        keyframes = parse_keyframe_info( text );
+                        console.log(keyframes);
+                    } 
+                    temp_date = new Date();
+                    t = (temp_date.getTime() - init_time.getTime()) / 1000;
+                    cube.position.x += 1;
+                    edges.position.x += 1;
+                    renderer.render( scene, camera );
+                }
             }
             animate();
+
 		</script>
     <div class="main">
         Lorem ipsum
