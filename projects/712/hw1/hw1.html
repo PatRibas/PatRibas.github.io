@@ -23,39 +23,15 @@
 		<script>
 
             let text = "";
-            function set(a){
+            function set(a)
+            {
                 text = a;
             }
-            
-			// Our Javascript will go here.
-            const test = fetch("https://patribas.github.io/projects/712/hw1/keyframe-input.txt")
-                .then(req => req.text())
-                .then(text => set(text));
 
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera( 75, 1, 0.1, 1000 );
-            
-            const renderer = new THREE.WebGLRenderer();
-            renderer.setSize( 512, 512 );
-            document.body.appendChild( renderer.domElement );
-
-            var n = 7;
-            const geometry = new THREE.BoxGeometry(n, n, n);
-            const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
-            const cube = new THREE.Mesh( geometry, material );
-            scene.add( cube );
-
-            var edges = new THREE.EdgesHelper( cube, 0x0000ff);
-            edges.material.linewidth = 2;
-            scene.add(edges); 
-
-            camera.position.z = 15 * 5;
-            camera.position.x = 50;
-            camera.position.y = 50;
-
-            var init_time = new Date();
-            var t = 0;
-            var keyframes = null;
+            function radians( degrees )
+            {
+                return degrees * Math.PI / 180;
+            }
 
             function parse_keyframe_info( data )
             {
@@ -74,8 +50,50 @@
                 return frames;
             }
 
+            function lerp(p1, p2, u)
+            {
+                return p1 + (p2 - p1) * u;
+            }
+            
+            const test = fetch("https://patribas.github.io/projects/712/hw1/keyframe-input.txt")
+                .then(req => req.text())
+                .then(text => set(text));
 
-            function animate() {
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera( 90, 1, 0.1, 1000 );
+            
+            const renderer = new THREE.WebGLRenderer();
+            renderer.setSize( 512, 512 );
+            document.body.appendChild( renderer.domElement );
+
+            var n = 5;
+            const geometry = new THREE.BoxGeometry(n, n, n);
+            var materials = [];
+            var colors = [0x00ffff, 0xff00ff, 0x00ff00, 0x0000ff, 0xff0000, 0xffff00];
+            for ( var i = 0; i < 6; i ++ )
+            {
+                var material = new THREE.MeshBasicMaterial( { color: colors[i] } );
+                materials.push(material);
+            }
+            const cube = new THREE.Mesh( geometry, materials );
+            scene.add( cube );
+
+
+            camera.position.z = -30;
+            camera.position.x = 0;
+            camera.position.y = 0;
+            camera.lookAt(0, 0, 0);
+            var init_time = null; new Date();
+            var t = 0;
+            var keyframes = null;
+
+            var time1, x1, y1, z1, xa1, ya1, za1, theta1;
+            var time2, x2, y2, z2, xa2, ya2, za2, theta2;
+            var u = 0;
+            var q1 = new THREE.Quaternion();
+            var q2 = new THREE.Quaternion();
+
+            function animate() { // main
                 requestAnimationFrame( animate );
                 if ( text == "" )
                 {
@@ -90,13 +108,57 @@
                     if ( keyframes == null )
                     {
                         keyframes = parse_keyframe_info( text );
-                        console.log(keyframes);
+                        init_time = new Date();
                     } 
-                    temp_date = new Date();
-                    t = (temp_date.getTime() - init_time.getTime()) / 1000;
-                    cube.position.x += 1;
-                    edges.position.x += 1;
-                    renderer.render( scene, camera );
+                    else {
+                        // get keyframes
+                        temp_date = new Date();
+                        t = (temp_date.getTime() - init_time.getTime()) / 1000;
+                        if ( t > 9 )
+                        {
+                            init_time = new Date();
+                            t = 0;
+                        }
+                        var f;
+                        for ( var i = 0; i < keyframes.length - 1; i += 1 )
+                        {
+                            f = keyframes[i];
+                            time1 = f[0];
+                            if ( time1 < t && t < 9 ) // incorrect keyframe!
+                            { 
+                                continue;
+                            }
+                            x1 = f[1];
+                            y1 = f[2];
+                            z1 = f[3];
+                            xa1 = f[4];
+                            ya1 = f[5];
+                            za1 = f[6];
+                            theta1 = radians(f[7]);
+                            q1 = q1.setFromAxisAngle( new THREE.Vector3( xa1, ya1, za1 ), theta1 );
+                            q1.normalize();
+                            f = keyframes[i + 1];
+                            time2 = f[0];
+                            x2 = f[1];
+                            y2 = f[2];
+                            z2 = f[3];
+                            xa2 = f[4];
+                            ya2 = f[5];
+                            za2 = f[6]; 
+                            theta2 = radians(f[7]); 
+                            q2 = q2.setFromAxisAngle( new THREE.Vector3( xa2, ya2, za2 ), theta2 );
+                            q2.normalize();
+                            break;
+                        }
+                        u = (t - time1) / (time2 - time1) + 1 ;
+                        cube.position.x = lerp(x1, x2, u);
+                        cube.position.y = lerp(y1, y2, u);
+                        cube.position.z = lerp(z1, z2, u);
+                        var q = q1.slerp(q2, u);
+                        q.normalize();
+                        cube.quaternion.set(q._x, q._y, q._z, q._w);
+                        renderer.render( scene, camera );
+                    }
                 }
             }
             animate();

@@ -1,7 +1,9 @@
+<!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
     <link rel="stylesheet" href="index.css">
-<title>Patrick Ribas</title>
+    <title>Patrick Ribas</title>
 </head>
 <body>
     <div class="topnav">
@@ -16,9 +18,89 @@
             Patrick Ribas
         </h1>
         <p>
-            Hello! This website is *very* much a work in progress. If you check back in a month or two, you will see me add projects that I am working on, but for now it's very bare-bones.
+            Hello! 
+            I am a 4th year BS/MS dual degree student in Computer Science at RIT,
+             with a focus on computer graphics. 
+             This raw CSS/HTML website serves as a bit of a portfolio, 
+             with some little projects here and there.
             <br>
         </p>
     </div>
-</body>
+    <script src="projects/712/js/three.js"></script>
+        <style>
+            body { text-align: center; }
+        </style>
+		<script>
+
+            function radians( degrees )
+            {
+                return degrees * Math.PI / 180;
+            }
+
+            function lerp(p1, p2, u)
+            {
+                return p1 + (p2 - p1) * u;
+            }
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.OrthographicCamera( -256, 256, 256, -256, 1, 1000 );
+            
+            const renderer = new THREE.WebGLRenderer();
+            renderer.setSize( 512, 512 );
+            document.body.appendChild( renderer.domElement );
+
+            var n = 50;
+            const geometry = new THREE.BoxGeometry(n, n, n);
+            var materials = [];
+            var material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+            const cube = new THREE.Mesh( geometry, material );
+            scene.add( cube );
+
+            camera.position.z = -30;
+            camera.position.x = 0;
+            camera.position.y = 0;
+            cube.position.x = 0;
+            cube.position.y = 0;
+            cube.position.z = 0;
+            camera.lookAt(0, 0, 0);
+
+            var dir = new THREE.Vector2(Math.random(), Math.random());
+            dir.normalize();
+            var q1 = new THREE.Quaternion();
+            var q2 = new THREE.Quaternion();
+
+            var speed = 3;
+            dir.x *= speed;
+            dir.y *= speed;
+
+            function animate() { // main
+                requestAnimationFrame( animate );
+                cube.position.x += dir.x;
+                cube.position.y += dir.y;
+                if (cube.position.x >= 256 - n/2 )
+                {
+                    dir.x = -dir.x;
+                    cube.material = new THREE.MeshBasicMaterial( { color: Math.floor(Math.random()*16777215) } );
+                }
+                if (cube.position.y >= 256 - n/2 )
+                {
+                    dir.y = -dir.y;
+                    cube.material = new THREE.MeshBasicMaterial( { color: Math.floor(Math.random()*16777215) } );
+                }
+                if (cube.position.x <= -256 + n/2 )
+                {
+                    dir.x = -dir.x;
+                    cube.material = new THREE.MeshBasicMaterial( { color: Math.floor(Math.random()*16777215) } );
+                }
+                if (cube.position.y <= -256 + n/2 )
+                {
+                    dir.y = -dir.y;
+                    cube.material = new THREE.MeshBasicMaterial( { color: Math.floor(Math.random()*16777215) } );
+                }
+                renderer.render( scene, camera );
+            }
+            animate();
+
+        </script>
+<body>
 </html>

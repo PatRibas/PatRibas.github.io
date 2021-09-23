@@ -1,5 +1,5 @@
 body {
-    background-image: url("grad.png");
+    background-color: #FFFF66;
     background-size:     100%;
 }
 /* Add a black background color to the top navigation */
@@ -37,7 +37,7 @@ body {
 }
 .main {
     font-family: Tahoma, Geneva, sans-serif;
-    margin-top: 49px;
+    margin-top: 55px;
     margin-left: -8px;
     margin-right: -8px;
     background-color: #FFFF66;
