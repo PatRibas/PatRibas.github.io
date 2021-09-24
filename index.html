@@ -42,6 +42,16 @@
                 return p1 + (p2 - p1) * u;
             }
 
+            function rand_sign()
+            {
+                var temp =  Math.random();
+                if ( temp <= 0.5 )
+                {
+                    return -1;
+                }
+                return 1;
+            }
+
             const scene = new THREE.Scene();
             const camera = new THREE.OrthographicCamera( -256, 256, 256, -256, 1, 1000 );
             
@@ -59,13 +69,14 @@
             camera.position.z = -30;
             camera.position.x = 0;
             camera.position.y = 0;
-            cube.position.x = 0;
-            cube.position.y = 0;
+            
             cube.position.z = 0;
             camera.lookAt(0, 0, 0);
 
-            var dir = new THREE.Vector2(Math.random(), Math.random());
+            var dir = new THREE.Vector2(0.5 * rand_sign(), 0.5 * rand_sign()) ;
             dir.normalize();
+            cube.position.x = Math.random() * 256 - 128;
+            cube.position.y = Math.random() * 256 - 128;
             var q1 = new THREE.Quaternion();
             var q2 = new THREE.Quaternion();
 
