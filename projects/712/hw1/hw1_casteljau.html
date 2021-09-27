@@ -117,8 +117,9 @@
                         init_time = new THREE.Clock();
                     } 
                     t = init_time.getElapsedTime();
+                    var frames = [];
                     var f;
-                    for ( var i = 0; i < keyframes.length - 1; i += 1 )
+                    for ( var i = 0; i < keyframes.length - 4; i += 1 )
                     {
                         f = keyframes[i];
                         time1 = f[0];
@@ -126,35 +127,11 @@
                         { 
                             continue;
                         }
-                        x1 = f[1];
-                        y1 = f[2];
-                        z1 = f[3];
-                        xa1 = f[4];
-                        ya1 = f[5];
-                        za1 = f[6];
-                        theta1 = radians(f[7]);
-                        q1 = q1.setFromAxisAngle( new THREE.Vector3( xa1, ya1, za1 ), theta1 );
-                        q1.normalize();
-                        f = keyframes[i + 1];
-                        time2 = f[0];
-                        x2 = f[1];
-                        y2 = f[2];
-                        z2 = f[3];
-                        xa2 = f[4];
-                        ya2 = f[5];
-                        za2 = f[6]; 
-                        theta2 = radians(f[7]); 
-                        q2 = q2.setFromAxisAngle( new THREE.Vector3( xa2, ya2, za2 ), theta2 );
-                        q2.normalize();
+                        frames.push(keyframes[i], keyframes[i + 1],  keyframes[i + 2],  keyframes[i + 3])
                         break;
                     }
                     u = (t - time1) / (time2 - time1) + 1 ;
-                    cube.position.x = lerp(x1, x2, u);
-                    cube.position.y = lerp(y1, y2, u);
-                    cube.position.z = lerp(z1, z2, u);
-                    var q = q1.slerp(q2, u);
-                    q.normalize();
-                    cube.quaternion.set(q._x, q._y, q._z, q._w);
+                    var params  = casteljau(frames, u);
                     renderer.render( scene, camera );
                 }
             }
@@ -162,8 +139,8 @@
 
 		</script>
     <div class="main">
-        This is the version of the homework using slerp and lerp. To see the 
-        de Casteljau version, click <a href="hw1_casteljau.html">here</a>.
+        This is the version of the homework using the de Casteljau construction. To see the 
+        slerp and lerp version, click <a href="hw1.html">here</a>.
         <br>
         Left click to start!
     </div>
