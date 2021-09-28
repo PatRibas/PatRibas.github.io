@@ -45,7 +45,10 @@
                     {
                         cur_frame.push( Number(cur_data[j]) );
                     }
-                    frames.push( cur_frame );
+                    if ( cur_frame.length > 1 )
+                    { 
+                        frames.push( cur_frame );
+                    }
                 }
                 return frames;
             }
@@ -53,6 +56,13 @@
             function lerp(p1, p2, u)
             {
                 return p1 + (p2 - p1) * u;
+            }
+
+            function casteljau_lerp(keyframes, u)
+            {
+                var n = keyframes.length;
+                console.log(keyframes);
+                return [1,0,0];
             }
             
             var hasClicked = false;
@@ -116,22 +126,16 @@
                         keyframes = parse_keyframe_info( text );
                         init_time = new THREE.Clock();
                     } 
-                    t = init_time.getElapsedTime();
-                    var frames = [];
-                    var f;
-                    for ( var i = 0; i < keyframes.length - 4; i += 1 )
+                    else 
                     {
-                        f = keyframes[i];
-                        time1 = f[0];
-                        if ( time1 < t && t < 9 ) // incorrect keyframe!
-                        { 
-                            continue;
-                        }
-                        frames.push(keyframes[i], keyframes[i + 1],  keyframes[i + 2],  keyframes[i + 3])
-                        break;
+                        t = init_time.getElapsedTime();
+                        u = (t - time1) / (time2 - time1) + 1 ;
+                        var pos = casteljau_lerp(keyframes, u);
+                        cube.position.x = pos[0];
+                        cube.position.y = pos[1];
+                        cube.position.z = pos[2];
+                        t = 99;
                     }
-                    u = (t - time1) / (time2 - time1) + 1 ;
-                    var params  = casteljau(frames, u);
                     renderer.render( scene, camera );
                 }
             }
