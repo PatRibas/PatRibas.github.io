@@ -61,7 +61,7 @@
             }
             document.addEventListener("mousedown", onMouseDown, false);
 
-            const test = fetch("https://patribas.github.io/projects/712/hw1/keyframe-input-extra.txt")
+            const test = fetch("https://raw.githubusercontent.com/PatRibas/PatRibas.github.io/master/projects/712/hw1/keyframe-input-extra.txt")
                 .then(req => req.text())
                 .then(text => set(text));
 
@@ -166,6 +166,12 @@
         de Casteljau version, click <a href="hw1_casteljau.html">here</a>.
         <br>
         Left click to start!
+        <br>
+        I had some weird things happen with the start of the animation, which 
+        I fixed by adding another keyframe identical to the first one at the start
+        of the animation (that is, the cube has no movement for the first second 
+        of animation), which seems to have done 
+        the trick.
     </div>
 </body>
 </html>
