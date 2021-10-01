@@ -45,7 +45,10 @@
                     {
                         cur_frame.push( Number(cur_data[j]) );
                     }
-                    frames.push( cur_frame );
+                    if ( cur_frame.length > 1 )
+                    { 
+                        frames.push( cur_frame );
+                    }
                 }
                 return frames;
             }

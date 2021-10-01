@@ -58,11 +58,66 @@
                 return p1 + (p2 - p1) * u;
             }
 
-            function casteljau_lerp(keyframes, u)
+            function get_points(keyframes)
+            {
+                var p = [];
+                for ( var i = 0; i < keyframes.length; i++ )
+                {
+                    p.push(keyframes[i].slice(1, keyframes.length));
+                }
+                return p;
+            }
+
+            function get_quaternions(keyframes)
+            {
+                var q = [];
+                for ( var i = 0; i < keyframes.length; i++ )
+                {
+                    var quat = new THREE.Quaternion();
+                    var p = keyframes[i];
+                    quat = quat.setFromAxisAngle( new THREE.Vector3( p[4], p[5], p[6] ), p[7] );
+                    quat.normalize();
+                    q.push(quat);
+                }
+                return q;
+            }
+
+            var once = true;
+            function casteljau(keyframes, u)
             {
                 var n = keyframes.length;
-                console.log(keyframes);
-                return [1,0,0];
+                var prev_points = get_points(keyframes);
+                var prev_qs = get_quaternions(keyframes);
+                var next_points = [];
+                var next_qs = [];
+                var p1, p2, x, y, z;
+                var q1 = new THREE.Quaternion();
+                var q2 = new THREE.Quaternion();
+                while( prev_points.length != 1 )
+                {
+                    for ( var i = 0; i < prev_points.length - 1; i += 1 ) 
+                    {
+                        p1 = prev_points[i];
+                        p2 = prev_points[i + 1];
+                        x = lerp(p1[0], p2[0], u);
+                        y = lerp(p1[1], p2[1], u);
+                        z = lerp(p1[2], p2[2], u);
+                        // TODO: verify correctness
+                        q1 = prev_qs[i];
+                        q2 = prev_qs[i + 1];
+                        var q = q1.slerp(q2, u);
+                        q.normalize();
+                        next_points.push( [x,y,z] );
+                        next_qs.push( q );
+                    }
+                    prev_points = [];
+                    prev_qs = [];
+                    next_points.forEach( p => prev_points.push(p) );
+                    next_qs.forEach( q => prev_qs.push(q) );
+                    next_points = [];
+                    next_qs = [];
+                }
+                return [prev_points[0], prev_qs[0]];
             }
             
             var hasClicked = false;
@@ -102,12 +157,8 @@
             var init_time = null; 
             var t = 0;
             var keyframes = null;
-
-            var time1, x1, y1, z1, xa1, ya1, za1, theta1;
-            var time2, x2, y2, z2, xa2, ya2, za2, theta2;
+            var time1, time2;
             var u = 0;
-            var q1 = new THREE.Quaternion();
-            var q2 = new THREE.Quaternion();
 
             function animate() { // main
                 requestAnimationFrame( animate );
@@ -124,17 +175,21 @@
                     if ( keyframes == null || t > 9 )
                     {
                         keyframes = parse_keyframe_info( text );
+                        time1 = keyframes[0][0];
+                        time2 = keyframes[keyframes.length - 1][0];
                         init_time = new THREE.Clock();
                     } 
                     else 
                     {
                         t = init_time.getElapsedTime();
-                        u = (t - time1) / (time2 - time1) + 1 ;
-                        var pos = casteljau_lerp(keyframes, u);
+                        u = t / (time2 - time1);
+                        var temp = casteljau(keyframes, u);
+                        var pos = temp[0];
+                        var q = temp[1];
                         cube.position.x = pos[0];
                         cube.position.y = pos[1];
                         cube.position.z = pos[2];
-                        t = 99;
+                        cube.quaternion.set(q._x, q._y, q._z, q._w);
                     }
                     renderer.render( scene, camera );
                 }
@@ -146,7 +201,7 @@
         This is the version of the homework using the de Casteljau construction. To see the 
         slerp and lerp version, click <a href="hw1.html">here</a>.
         <br>
-        Left click to start!
+        Left click to start! You will have to refresh this one to play it again.
     </div>
 </body>
 </html>

@@ -53,10 +53,10 @@
             }
 
             const scene = new THREE.Scene();
-            const camera = new THREE.OrthographicCamera( -256, 256, 256, -256, 1, 1000 );
+            const camera = new THREE.OrthographicCamera( -512, 512, 256, -256, 1, 1000 );
             
             const renderer = new THREE.WebGLRenderer();
-            renderer.setSize( 512, 512 );
+            renderer.setSize( 1024, 512 );
             document.body.appendChild( renderer.domElement );
 
             var n = 50;
@@ -88,7 +88,7 @@
                 requestAnimationFrame( animate );
                 cube.position.x += dir.x;
                 cube.position.y += dir.y;
-                if (cube.position.x >= 256 - n/2 )
+                if (cube.position.x >= 512 - n/2 )
                 {
                     dir.x = -dir.x;
                     cube.material = new THREE.MeshBasicMaterial( { color: Math.floor(Math.random()*16777215) } );
@@ -98,7 +98,7 @@
                     dir.y = -dir.y;
                     cube.material = new THREE.MeshBasicMaterial( { color: Math.floor(Math.random()*16777215) } );
                 }
-                if (cube.position.x <= -256 + n/2 )
+                if (cube.position.x <= -512 + n/2 )
                 {
                     dir.x = -dir.x;
                     cube.material = new THREE.MeshBasicMaterial( { color: Math.floor(Math.random()*16777215) } );
