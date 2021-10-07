@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+		<title>Fluids!</title>
+    <link rel="stylesheet" href="style_applet.css">
+    <script type="text/javascript" src="/home/patrick/public_html/PatRibas.github.io/projects/fluids/gl-matrix-min.js"></script>
+</head>
+<body>
+  <style>
+    body { text-align: center; }
+  </style>
+<!--- <script src="../js/three.js"></script> ---> 
+<script type="module">
+      import * as THREE from "https://threejs.org/build/three.module.js";
+      import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
+      var n = 1.5; // cube bounds
+
+      function lerp(p1, p2, u)
+      {
+          return p1 + (p2 - p1) * u;
+      }
+
+      function get_new_pos( particle, t0, t1 )
+      {
+        var x = particle.position.x;
+        var y = particle.position.y;
+        var z = particle.position.z;
+        var vy = accel( particle, t0, t1 ) * (t1 - t0);
+
+        if ( y <= -n && particle.velocity.y < 0 )
+        {
+          particle.velocity.y = -particle.velocity.y - 0.05 * (-particle.velocity.y);
+          particle.velocity.y += vy;
+          if ( particle.velocity.y <= vy )
+          {
+            particle.velocity.y = 0;
+          }
+        }
+        else
+        {
+          particle.velocity.y += vy;
+        }
+        
+        y = y + particle.velocity.y * (t1 - t0);
+        if ( y < -n )
+        {
+          y = -n;
+          // TODO: actual collision checks
+        }
+
+        if ( y > 0 )
+        {
+          y = 0;
+          // TODO: actual collision checks
+        }
+        return [x, y, z];
+      }
+
+      function accel( particle, t0, t1 )
+      {
+        var g = -9.81;
+        var ext = 0;
+        var tot = g + ext;
+        return tot; 
+      }
+
+
+      // camera and window setup
+      var w = window.innerWidth - 30;
+      var h = window.innerHeight - 30;
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera( 75, w/h, 0.1, 1000 );
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize( w, h );
+      document.body.appendChild( renderer.domElement );
+      var controls = new OrbitControls( camera, renderer.domElement );
+      controls.target.set( 0, 0, 0 );
+
+      // scene setup
+      const temp_geometry = new THREE.BoxGeometry(n, n, n);
+      var material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+      const cube = new THREE.Mesh( temp_geometry, material );
+      var edges = new THREE.EdgesHelper( cube, 0xff00ff );
+      edges.material.linewidth = 2;
+      scene.add(edges); 
+
+      const geometry = new THREE.BufferGeometry();
+      const vertices = [];
+      const num_particles_sqrt = 10;
+      const num_particles = num_particles_sqrt ** 2;
+
+      for ( var i = 0; i <= num_particles_sqrt; i++ )
+      {
+        for ( var j = 0; j <= num_particles_sqrt; j++ )
+        {
+          for ( var k = 0; k < 1; k++ )
+          {
+            const x = ( lerp(n/2 * -1 + 0.02, n/2 - 0.02, i/num_particles_sqrt) ); // x
+            const y = ( n/2 + k ); // y
+            const z = ( lerp(n/2 * -1 + 0.02, n/2 - 0.02, j/num_particles_sqrt) ); // z
+            vertices.push( x, y, z );
+          }
+        }
+      }
+
+      const particles = [];
+      material = new THREE.PointsMaterial( { size: 0.05, blending: THREE.AdditiveBlending, depthTest: false, transparent: true } );
+      material.color.setRGB( 0, 0, 1 );
+      geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+      for ( var i = 0; i < num_particles; i++ )
+      {
+        var particle = new THREE.Points( geometry, material );
+        particle.velocity = new THREE.Vector3(0, 0, 0);
+        particles.push( particle );
+        scene.add( particle );
+      }
+
+
+      camera.position.z = 2;
+      camera.position.x = 1;
+      camera.position.y = 1;
+      camera.lookAt(0, 0, 0);
+      
+      var timer = new THREE.Clock();
+      var t0 = 0;
+
+      function animate() {
+          requestAnimationFrame( animate );
+          var t1 = timer.getElapsedTime();
+
+          for ( var i = 0; i < particles.length; i++ )
+          {
+            
+            const particle = particles[i];
+            var coords = get_new_pos( particle, t0, t1 );
+            particle.position.x = coords[0];
+            particle.position.y = coords[1];
+            particle.position.z = coords[2];
+          }
+
+          t0 = t1;
+
+          renderer.render( scene, camera );
+      }
+      animate();
+
+</script>
+</body>
+</html>
