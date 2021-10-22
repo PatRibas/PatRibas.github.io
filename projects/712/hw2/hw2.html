@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!---
     <div class="topnav">
         <a href="../../index.html">Home</a>
         <a class="active" href="../projects.html">Projects</a>
@@ -16,14 +17,16 @@
     <div class="title">
         CSCI 712: Animation HW 2
     </div>
+    -->
     <div class="three">
         <style>
             body { text-align: center; }
         </style>
+        <script src="../js/three.js"></script>
+        <script type="text/javascript" src="../js/dat.gui.min.js"></script>
 		<script type="module">
-            import * as THREE from "https://threejs.org/build/three.module.js";
             import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
-            
+
             function radians( degrees )
             {
                 return degrees * Math.PI / 180;
@@ -34,22 +37,39 @@
                 return p1 + (p2 - p1) * u;
             }
 
-            function integrate( f, df, t )
+            function integrate( f, df, h )
             {
+                // Euler method
+                
                 var F = f.clone();
-                F.x += df.x * t;
-                F.y += df.y * t;
-                F.z += df.z * t;
+                F.x += df.x * h;
+                F.y += df.y * h;
+                F.z += df.z * h;
                 if ( F.length() < epsilon )
                 {
                     F = new THREE.Vector3(0, 0, 0);
                 }
                 return F;
+                
+                
+                // Runge-Kutta 4th order
+                //var k1, k2, k3, k4;
+                
+                // x
+
+                // y
+
+                // z
+            }
+
+            function shoot( x, z )
+            {
+                // TODO
             }
 
             // scene setup
-            var w = window.innerWidth - 30;
-            var h = window.innerHeight - 50;
+            var w = window.innerWidth - 20;
+            var h = window.innerHeight - 20;
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera( 75, w/h, 0.1, 1000 );
             camera.position.z = 5;
@@ -122,20 +142,58 @@
             var spheres    = [cue, s1, s2, s3];
             // everything happens on the XZ plane
             var velocities = [new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0)];
-            var momentums  = [new THREE.Vector3(-20.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0)];
-            var init_time = new THREE.Clock();
+            var momentums  = [new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0)];
+            
             var t0 = 0;
             var t1;
             var mu = 0.1; // friction coefficient
-            var e = 0.9; // wall energy lost coefficient
-            var g = 32.1740; // gravity
+            var e = 0.95; // wall energy maintained coefficient
+            var g = 32.1740; // gravity in ft = cursed
             var epsilon = 0.001; // numerical min 
             // extra simplifying assumption: mass = 1
+
+            // GUI setup
+            const datGui  = new dat.GUI({ autoPlace: true });
+            datGui.domElement.id = 'gui';
+            var controls = new function() {
+                this.friction = mu;
+                this.e_wall = e;
+                this.z = 0;
+                this.x = -20;
+            }
+            const varFolder = datGui.addFolder("Controls");
+            varFolder.add(controls, "friction", 0, 1);
+            varFolder.add(controls, "e_wall", 0, 1);
+            varFolder.add(controls, "x", -30, 30);
+            varFolder.add(controls, "z", -30, 30);
+            var obj = { shoot:function()
+                { 
+                    var m = momentums[0];
+                    m.x += controls.x;
+                    m.z += controls.z; 
+                }
+            };
+            varFolder.add(obj,'shoot');     
+            varFolder.open();
+            const dir = new THREE.Vector3(-20, 0, 0);
+            const origin = cue.position.clone();
+            const length = 1;
+
+            const arrowHelper = new THREE.ArrowHelper( dir, origin, length, 0xFF00FF );
+            scene.add( arrowHelper );
+
+            var init_time = new THREE.Clock();
             function animate() { // main
                 requestAnimationFrame( animate );
                 // for sphere :
                 t1 = init_time.getElapsedTime();
                 var t = t1 - t0;
+                mu = controls.friction;
+                e = controls.e_wall;
+                arrowHelper.setDirection( new THREE.Vector3(controls.x, 0, controls.z) );
+                arrowHelper.position.x = cue.position.x;
+                arrowHelper.position.z = cue.position.z;
+                arrowHelper.setLength( new THREE.Vector2(controls.x, controls.z).length()/10 );
                 for ( var i = 0; i < 4; i++ )
                 {
                     var s = spheres[i];
@@ -153,6 +211,10 @@
                     {
                         friction.x = 0;
                         friction.z = 0;
+                    }
+                    if ( friction.length() > v.length() )
+                    {
+
                     }
                     // apply forces and velocities, and update position
                     var p = integrate(s.position, v, t);
