@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+		<title>Animation!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="topnav">
+        <a href="../../index.html">Home</a>
+        <a class="active" href="../projects.html">Projects</a>
+        <a href="https://www.linkedin.com/in/patrick-ribas/">LinkedIn</a>
+        <a href="../../Patrick_Ribas_Resume.pdf">Resume</a>
+        <a href="../../contact.html">Contact</a>
+    </div>
+    <div class="title">
+        CSCI 712: Animation HW 2
+    </div>
+    <div class="three">
+        <style>
+            body { text-align: center; }
+        </style>
+		<script type="module">
+            import * as THREE from "https://threejs.org/build/three.module.js";
+            import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
+            
+            function radians( degrees )
+            {
+                return degrees * Math.PI / 180;
+            }
+
+            function lerp(p1, p2, u)
+            {
+                return p1 + (p2 - p1) * u;
+            }
+
+            function integrate( f, df, t )
+            {
+                var F = f.clone();
+                F.x += df.x * t;
+                F.y += df.y * t;
+                F.z += df.z * t;
+                if ( F.length() < epsilon )
+                {
+                    F = new THREE.Vector3(0, 0, 0);
+                }
+                return F;
+            }
+
+            // scene setup
+            var w = window.innerWidth - 30;
+            var h = window.innerHeight - 50;
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera( 75, w/h, 0.1, 1000 );
+            camera.position.z = 5;
+            camera.position.x = 5;
+            camera.position.y = 5;
+            camera.lookAt( new THREE.Vector3(0, 0, 0));
+            const renderer = new THREE.WebGLRenderer();
+            var controls = new OrbitControls( camera, renderer.domElement );
+            controls.target.set( 0, 0, 0 );
+            renderer.setSize( w, h );
+            document.body.appendChild( renderer.domElement );
+
+            var n = 5;
+            var width = n * 2;
+            var height = n;
+            const geometry = new THREE.BoxGeometry(width, n/10, height);
+            var materials = [];
+            var colors = [0x00ffff, 0xff00ff, 0x00ff00, 0x0000ff, 0xff0000, 0xffff00];
+            for ( var i = 0; i < 6; i ++ )
+            {
+                var material = new THREE.MeshPhongMaterial( { color: colors[i] } );
+                materials.push(material);
+            }
+
+            var light = new THREE.PointLight( 0xffffff, 1, 100 ); 
+            light.position.set( 5, 5, 0 ); 
+            scene.add( light );
+            var light = new THREE.PointLight( 0xffffff, 1, 100 ); 
+            light.position.set( -5, 5, 0 ); 
+            scene.add( light );
+            var light = new THREE.PointLight( 0xffffff, 1, 100 ); 
+            light.position.set( 0, 5, 0 ); 
+            scene.add( light );
+
+            const cube = new THREE.Mesh( geometry, materials );
+            cube.position.x = 0;
+            cube.position.y = 0;
+            cube.position.z = 0;
+            scene.add( cube );
+            
+            var r = 0.1875;
+            const sgeometry = new THREE.SphereGeometry( r, 32, 16 );
+            var material = new THREE.MeshPhongMaterial( { color: 0xffffff } );
+            const cue = new THREE.Mesh( sgeometry, material );
+            scene.add( cue );
+            cue.position.y = n/10 * 0.5 + r;
+            cue.position.z = 0;
+            cue.position.x = 2;
+
+            var material = new THREE.MeshPhongMaterial( { color: 0xffff00 } );
+            const s1 = new THREE.Mesh( sgeometry, material );
+            s1.position.y = n/10 * 0.5 + r;
+            s1.position.z = 0;
+            s1.position.x = -2;
+            scene.add( s1 );
+            var material = new THREE.MeshPhongMaterial( { color: 0xff0000 } );
+            const s2 = new THREE.Mesh( sgeometry, material );
+            s2.position.y = n/10 * 0.5 + r;
+            s2.position.z = r + 0.01;
+            s2.position.x = -2 - r * 2 - 1;
+            scene.add( s2 );
+            var material = new THREE.MeshPhongMaterial( { color: 0x0000ff } );
+            const s3 = new THREE.Mesh( sgeometry, material );
+            s3.position.y = n/10 * 0.5 + r;
+            s3.position.z = -r - 0.01;
+            s3.position.x = -2 - r * 2 - 1;
+            scene.add( s3 );
+
+            // initial conditions
+            var spheres    = [cue, s1, s2, s3];
+            // everything happens on the XZ plane
+            var velocities = [new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0)];
+            var momentums  = [new THREE.Vector3(-20.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0)];
+            var init_time = new THREE.Clock();
+            var t0 = 0;
+            var t1;
+            var mu = 0.1; // friction coefficient
+            var e = 0.9; // wall energy lost coefficient
+            var g = 32.1740; // gravity
+            var epsilon = 0.001; // numerical min 
+            // extra simplifying assumption: mass = 1
+            function animate() { // main
+                requestAnimationFrame( animate );
+                // for sphere :
+                t1 = init_time.getElapsedTime();
+                var t = t1 - t0;
+                for ( var i = 0; i < 4; i++ )
+                {
+                    var s = spheres[i];
+                    var v = velocities[i];
+                    var m = momentums[i];
+                    // get forces 
+                    var friction = v.clone();
+                    if (friction.length() > epsilon )
+                    {
+                        friction.normalize();
+                        friction.multiplyScalar(-1);
+                        friction.multiplyScalar(g * mu);
+                    }
+                    else
+                    {
+                        friction.x = 0;
+                        friction.z = 0;
+                    }
+                    // apply forces and velocities, and update position
+                    var p = integrate(s.position, v, t);
+                    s.position.x = p.x;
+                    s.position.z = p.z;
+                    // TODO: update momentum and velocity
+                    // check for collisions with spheres
+                    for ( var j = 0; j < 4; j++ )
+                    {
+                        if ( j == i ) // can't collide with yourself
+                        {
+                            continue;
+                        }
+                        var new_s = spheres[j]
+                        var distance = s.position.distanceTo( new_s.position );
+                        if ( distance <= r * 2 ) // accounts for the radius of both spheres
+                        {
+                            // TODO: actual physics
+                            var collision_line = s.position.clone();
+                            collision_line.sub(new_s.position);
+                            var walkback_vec = collision_line.clone();
+                            walkback_vec.normalize();
+                            walkback_vec.multiplyScalar((2*r - distance));
+                            new_s.position.sub(walkback_vec);
+                            walkback_vec.multiplyScalar(-1);
+                            s.position.sub(walkback_vec); 
+                            collision_line.normalize();
+                            var v2 = velocities[j];
+                            var m2 = momentums[j];
+                            var temp = (v.dot(collision_line) - v2.dot(collision_line))/2;
+                            var J = collision_line.clone();
+                            J.multiplyScalar( temp );
+                            m2.add( J );
+                            J.multiplyScalar(-1)
+                            m.add( J );
+                        }
+                    }
+                    // check for collisions with cusions
+                    // TODO: actual physics
+                    if ( s.position.x <= -width/2 + r )
+                    {
+                        s.position.x = -width/2 + r + 0.01;
+                        m.x *= -1; 
+                        m.multiplyScalar(e);
+                    }
+                    else if  ( s.position.x >= width/2 - r )
+                    {
+                        s.position.x = width/2 - r - 0.01;
+                        m.x *= -1;
+                        m.multiplyScalar(e);
+                    }
+                    if ( s.position.z >= height/2 - r ) 
+                    {
+                        s.position.z = height/2 - r - 0.01;
+                        m.z *= -1; 
+                        m.multiplyScalar(e);
+                    } 
+                    else if (s.position.z <= -height/2 + r )
+                    {
+                        s.position.z = -height/2 + r + 0.01;
+                        m.z *= -1;
+                        m.multiplyScalar(e)
+                    }
+                    var mn = integrate(m, friction, t);
+                    m.x = mn.x;
+                    m.z = mn.z;
+                    v.x = mn.x;
+                    v.z = mn.z;
+                }
+                t0 = t1;
+                renderer.render( scene, camera );
+            }
+            animate();
+        </script>
+    </div>
+</body>
+</html>
