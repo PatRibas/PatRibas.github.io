@@ -45,15 +45,11 @@
                 F.x += df.x * h;
                 F.y += df.y * h;
                 F.z += df.z * h;
-                if ( F.length() < epsilon )
-                {
-                    F = new THREE.Vector3(0, 0, 0);
-                }
                 return F;
                 */
                 
-                // Runge-Kutta 4th order
-                var k1, k2, k3, k4, mid;
+                // Runge-Kutta 2nd order
+                var mid;
                 var F = f.clone();
                 // x
                 mid = f.x + (h/2) * df.x;
@@ -146,7 +142,6 @@
             var mu = 0.1; // friction coefficient
             var e = 0.95; // wall energy maintained coefficient
             var g = 32.1740; // gravity in ft = cursed
-            var epsilon = 0.001; // numerical min 
             // extra simplifying assumption: mass = 1
 
             // GUI setup
@@ -243,21 +238,10 @@
                     var m = momentums[i];
                     // get forces 
                     var friction = v.clone();
-                    if (friction.length() > epsilon )
-                    {
-                        friction.normalize();
-                        friction.multiplyScalar(-1);
-                        friction.multiplyScalar(g * mu);
-                    }
-                    else
-                    {
-                        friction.x = 0;
-                        friction.z = 0;
-                    }
-                    if ( friction.length() > v.length() )
-                    {
-
-                    }
+                    friction.normalize();
+                    friction.multiplyScalar(-1);
+                    friction.multiplyScalar(g * mu);
+                    
                     // apply forces and velocities, and update position
                     var p = integrate(s.position, v, t);
                     s.position.x = p.x;
@@ -328,10 +312,14 @@
                         }
                     }
                     var mn = integrate(m, friction, t);
+                    if ( mn.length() < 0.01 )
+                    {
+                        mn.setLength(0);
+                    }
                     m.x = mn.x;
                     m.z = mn.z;
-                    v.x = mn.x;
-                    v.z = mn.z;
+                    v.x = mn.x / 1; // m = 1 by assumption
+                    v.z = mn.z / 1;
                 }
                 t0 = t1;
                 renderer.render( scene, camera );
