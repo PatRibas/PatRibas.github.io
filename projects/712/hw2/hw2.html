@@ -53,12 +53,14 @@
                 */
                 
                 // Runge-Kutta 4th order
-                var k1, k2, k3, k4, temp, xmid;
+                var k1, k2, k3, k4, mid;
                 var F = f.clone();
                 // x
-                F.x = f.x + (h/2) * df.x;
+                mid = f.x + (h/2) * df.x;
+                F.x = f.x + h * ((mid - f.x) / (h / 2));
                 // z
-                F.z = f.z + (h/2) * df.z;
+                mid = f.z + (h/2) * df.z;
+                F.z = f.z + h * ((mid - f.z) / (h / 2));
                 return F;
             }
 
@@ -172,7 +174,7 @@
                 }
             };
             varFolder.add(shoot,'shoot');     
-            var reset = { reset:function()
+            var setup_table = { setup_table:function()
                 { 
                     controls.angle = 180;
                     controls.magnitude = 20.0;
@@ -200,7 +202,7 @@
                     s3.position.x = -2 - r * 2 - 1;
                 }
             };
-            varFolder.add(reset,'reset'); 
+            varFolder.add(setup_table,'setup_table'); 
             varFolder.open();
             const dir = new THREE.Vector3(-20, 0, 0);
             const origin = cue.position.clone();
