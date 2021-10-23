@@ -62,11 +62,6 @@
                 // z
             }
 
-            function shoot( x, z )
-            {
-                // TODO
-            }
-
             // scene setup
             var w = window.innerWidth - 20;
             var h = window.innerHeight - 20;
@@ -160,20 +155,52 @@
                 this.e_wall = e;
                 this.z = 0;
                 this.x = -20;
+                this.angle = 180;
+                this.magnitude = 20.0;
             }
             const varFolder = datGui.addFolder("Controls");
-            varFolder.add(controls, "friction", 0, 1);
+            varFolder.add(controls, "friction", 0, 2);
             varFolder.add(controls, "e_wall", 0, 1);
-            varFolder.add(controls, "x", -30, 30);
-            varFolder.add(controls, "z", -30, 30);
-            var obj = { shoot:function()
+            varFolder.add(controls, "angle", 0, 360);
+            varFolder.add(controls, "magnitude", 0, 30);
+            var shoot = { shoot:function()
                 { 
                     var m = momentums[0];
-                    m.x += controls.x;
-                    m.z += controls.z; 
+                    m.set( -1, 0, 0 );
+                    m.applyAxisAngle( new THREE.Vector3(0, 1, 0), radians(180-controls.angle) );
+                    m.setLength( controls.magnitude );
                 }
             };
-            varFolder.add(obj,'shoot');     
+            varFolder.add(shoot,'shoot');     
+            var reset = { reset:function()
+                { 
+                    controls.angle = 180;
+                    controls.magnitude = 20.0;
+                    scene.remove(cue);
+                    scene.remove(s1);
+                    scene.remove(s2);
+                    scene.remove(s3);
+                    scene.add(cue);
+                    scene.add(s1);
+                    scene.add(s2);
+                    scene.add(s3);
+                    velocities = [new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0)];
+                    momentums  = [new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0), new THREE.Vector3(0.0, 0.0, 0.0)];
+                    cue.position.y = n/10 * 0.5 + r;
+                    cue.position.z = 0;
+                    cue.position.x = 2;
+                    s1.position.y = n/10 * 0.5 + r;
+                    s1.position.z = 0;
+                    s1.position.x = -2;
+                    s2.position.y = n/10 * 0.5 + r;
+                    s2.position.z = r + 0.01;
+                    s2.position.x = -2 - r * 2 - 1;
+                    s3.position.y = n/10 * 0.5 + r;
+                    s3.position.z = -r - 0.01;
+                    s3.position.x = -2 - r * 2 - 1;
+                }
+            };
+            varFolder.add(reset,'reset'); 
             varFolder.open();
             const dir = new THREE.Vector3(-20, 0, 0);
             const origin = cue.position.clone();
@@ -181,6 +208,18 @@
 
             const arrowHelper = new THREE.ArrowHelper( dir, origin, length, 0xFF00FF );
             scene.add( arrowHelper );
+
+            var pockets = [];
+            var material = new THREE.MeshPhongMaterial( { color: 0xFF00FF } );
+            for ( var i = 0; i < 6; i++ )
+            {
+                const p = new THREE.Mesh( sgeometry, material );
+                p.position.y = n/10 * 0.5 + r;
+                p.position.z = i % 2 == 0 ? height/2 : -height/2;
+                p.position.x = lerp(-width/2, width/2, (i%3)/2);
+                scene.add( p );
+                pockets.push(p);
+            }
 
             var init_time = new THREE.Clock();
             function animate() { // main
@@ -190,10 +229,10 @@
                 var t = t1 - t0;
                 mu = controls.friction;
                 e = controls.e_wall;
-                arrowHelper.setDirection( new THREE.Vector3(controls.x, 0, controls.z) );
+                arrowHelper.setDirection( new THREE.Vector3(-1, 0, 0).applyAxisAngle( new THREE.Vector3(0, 1, 0), radians(180-controls.angle) ));
                 arrowHelper.position.x = cue.position.x;
                 arrowHelper.position.z = cue.position.z;
-                arrowHelper.setLength( new THREE.Vector2(controls.x, controls.z).length()/10 );
+                arrowHelper.setLength( controls.magnitude / 10 );
                 for ( var i = 0; i < 4; i++ )
                 {
                     var s = spheres[i];
@@ -220,7 +259,6 @@
                     var p = integrate(s.position, v, t);
                     s.position.x = p.x;
                     s.position.z = p.z;
-                    // TODO: update momentum and velocity
                     // check for collisions with spheres
                     for ( var j = 0; j < 4; j++ )
                     {
@@ -232,7 +270,6 @@
                         var distance = s.position.distanceTo( new_s.position );
                         if ( distance <= r * 2 ) // accounts for the radius of both spheres
                         {
-                            // TODO: actual physics
                             var collision_line = s.position.clone();
                             collision_line.sub(new_s.position);
                             var walkback_vec = collision_line.clone();
@@ -253,7 +290,6 @@
                         }
                     }
                     // check for collisions with cusions
-                    // TODO: actual physics
                     if ( s.position.x <= -width/2 + r )
                     {
                         s.position.x = -width/2 + r + 0.01;
@@ -277,6 +313,16 @@
                         s.position.z = -height/2 + r + 0.01;
                         m.z *= -1;
                         m.multiplyScalar(e)
+                    }
+                    // check pocket collisions
+                    for ( var j = 0; j < 6; j++ )
+                    {
+                        var p = pockets[j]
+                        var distance = s.position.distanceTo( p.position );
+                        if ( distance <= r * 2 && i != 0 ) // accounts for the radius of both spheres
+                        {
+                            scene.remove(s);
+                        }
                     }
                     var mn = integrate(m, friction, t);
                     m.x = mn.x;
