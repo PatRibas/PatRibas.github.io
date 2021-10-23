@@ -40,7 +40,7 @@
             function integrate( f, df, h )
             {
                 // Euler method
-                
+                /*
                 var F = f.clone();
                 F.x += df.x * h;
                 F.y += df.y * h;
@@ -50,16 +50,16 @@
                     F = new THREE.Vector3(0, 0, 0);
                 }
                 return F;
-                
+                */
                 
                 // Runge-Kutta 4th order
-                //var k1, k2, k3, k4;
-                
+                var k1, k2, k3, k4, temp, xmid;
+                var F = f.clone();
                 // x
-
-                // y
-
+                F.x = f.x + (h/2) * df.x;
                 // z
+                F.z = f.z + (h/2) * df.z;
+                return F;
             }
 
             // scene setup
@@ -211,9 +211,10 @@
 
             var pockets = [];
             var material = new THREE.MeshPhongMaterial( { color: 0xFF00FF } );
+            const pgeometry = new THREE.SphereGeometry( r * 2, 32, 16 );
             for ( var i = 0; i < 6; i++ )
             {
-                const p = new THREE.Mesh( sgeometry, material );
+                const p = new THREE.Mesh( pgeometry, material );
                 p.position.y = n/10 * 0.5 + r;
                 p.position.z = i % 2 == 0 ? height/2 : -height/2;
                 p.position.x = lerp(-width/2, width/2, (i%3)/2);
