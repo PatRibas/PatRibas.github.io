@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+		<title>Animation!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!---
+    <div class="topnav">
+        <a href="../../index.html">Home</a>
+        <a class="active" href="../projects.html">Projects</a>
+        <a href="https://www.linkedin.com/in/patrick-ribas/">LinkedIn</a>
+        <a href="../../Patrick_Ribas_Resume.pdf">Resume</a>
+        <a href="../../contact.html">Contact</a>
+    </div>
+    <div class="title">
+        CSCI 712: Animation HW 2
+    </div>
+    -->
+    <div class="three">
+        <style>
+            body { text-align: center; }
+        </style>
+        <script src="../js/three.js"></script>
+        <script type="text/javascript" src="../js/dat.gui.min.js"></script>
+		<script type="module">
+            import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
+
+            
+            var text = "";
+            var mocap_data = null;
+
+            function set(a)
+            {
+                text = a;
+            }
+
+            function parse_mocap_info( data )
+            {
+                var lines = data.split('\n');
+                var frames = [];
+                for ( var i = 0; i < lines.length; i += 1 )
+                {
+                    var cur_data = lines[i].split(/[ ]+/);
+                    var cur_frame = [];
+                    for ( var j = 0; j < cur_data.length; j += 1 )
+                    {
+                        cur_frame.push( Number(cur_data[j]) );
+                    }
+                    if ( cur_frame.length > 1 )
+                    { 
+                        frames.push( cur_frame );
+                    }
+                }
+                mocap_data = frames;
+            }
+
+            function radians( degrees )
+            {
+                return degrees * Math.PI / 180;
+            }
+
+            function lerp(p1, p2, u)
+            {
+                return p1 + (p2 - p1) * u;
+            }
+
+            function integrate( f, df, h )
+            {
+                // Euler method
+                var F = f.clone();
+                F.x += df.x * h;
+                F.y += df.y * h;
+                F.z += df.z * h;
+                return F;
+            }
+
+            // scene setup
+            var w = window.innerWidth - 20;
+            var h = window.innerHeight - 20;
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera( 75, w/h, 0.1, 1000 );
+            camera.position.z = 5;
+            camera.position.x = 5;
+            camera.position.y = 5;
+            camera.lookAt( new THREE.Vector3(0, 0, 0));
+            const renderer = new THREE.WebGLRenderer();
+            var controls = new OrbitControls( camera, renderer.domElement );
+            controls.target.set( 0, 0, 0 );
+            renderer.setSize( w, h );
+            document.body.appendChild( renderer.domElement );
+
+            var n = 5;
+            var width = n * 2;
+            var height = n;
+            const geometry = new THREE.BoxGeometry(n, n, n);
+            var materials = [];
+            var colors = [0x00ffff, 0xff00ff, 0x00ff00, 0x0000ff, 0xff0000, 0xffff00];
+            for ( var i = 0; i < 6; i ++ )
+            {
+                var material = new THREE.MeshBasicMaterial( { color: colors[i] } );
+                materials.push(material);
+            }
+
+            const cube = new THREE.Mesh( geometry, materials );
+            cube.position.x = 0;
+            cube.position.y = 0;
+            cube.position.z = 0;
+            scene.add( cube );
+
+            
+            
+            const do_things = fetch("https://www.cs.rit.edu/~jmg/animation/bvhdata/Ambient.bvh", {mode: 'no-cors'})
+                .then(req => req.text())
+                .then(t => {
+                    console.log(t);
+                });
+                /*.then(text => set(text))
+                .then( () => parse_mocap_data(text) )
+                .then( () => animate() );*/
+            
+            var init_time = new THREE.Clock();
+            function animate() { // main
+                requestAnimationFrame( animate );
+                renderer.render( scene, camera );
+            }
+            
+        </script>
+    </div>
+</body>
+</html>
