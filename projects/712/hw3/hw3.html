@@ -31,6 +31,7 @@
             var text = "";
             var mocap_data = null;
             var frames_data = null;
+            var url = "https://raw.githubusercontent.com/PatRibas/PatRibas.github.io/master/projects/712/hw3/Sneak.bvh"
 
             class MocapPoint 
             {
@@ -72,12 +73,13 @@
                         this.position.y = this.offset.y;
                         this.position.z = this.offset.z;
 
-                        var axis = new THREE.Vector3( 1, 0, 0 );
-                        this.position.applyAxisAngle( axis, radians(this.xrot)  );
-                        var axis = new THREE.Vector3( 0, 1, 0 );
-                        this.position.applyAxisAngle( axis, radians(this.yrot)  );
+                        
                         var axis = new THREE.Vector3( 0, 0, 1 );
-                        this.position.applyAxisAngle( axis, radians(this.zrot)  );
+                        this.position.applyAxisAngle( axis, radians(this.zrot) );
+                        axis.set(  1, 0, 0  );
+                        this.position.applyAxisAngle( axis, radians(this.xrot) );
+                        axis.set(  0, 1, 0  );
+                        this.position.applyAxisAngle( axis, radians(this.yrot) );
 
                         this.position.x += this.parent.position.x;
                         this.position.y += this.parent.position.y;
@@ -285,12 +287,12 @@
             renderer.setSize( w, h );
             document.body.appendChild( renderer.domElement );
 
-            var n = 5;
-            var width = n * 2;
-            var height = n;
-            const geometry = new THREE.BoxGeometry(n, n, n);
+            var n = 125;
+            var width = n * 5;
+            var height = n * 5;
+            const geometry = new THREE.BoxGeometry(width, 0.1, height);
             var materials = [];
-            var colors = [0x00ffff, 0xff00ff, 0x00ff00, 0x0000ff, 0xff0000, 0xffff00];
+            var colors = [0x00ffff, 0xff00ff, 0x0000ff, 0x0000ff, 0xff0000, 0xffff00];
             for ( var i = 0; i < 6; i ++ )
             {
                 var material = new THREE.MeshBasicMaterial( { color: colors[i] } );
@@ -299,13 +301,13 @@
 
             const cube = new THREE.Mesh( geometry, materials );
             cube.position.x = 0;
-            cube.position.y = 0;
+            cube.position.y = 16;
             cube.position.z = 0;
-            //scene.add( cube );
+            
 
             var mocap_model = null;
             var f = 0;
-            const do_things = fetch("https://raw.githubusercontent.com/PatRibas/PatRibas.github.io/master/projects/712/hw3/Sneak.bvh")
+            const do_things = fetch(url)
                 .then(req => req.text())
                 .then(text => set(text))
                 .then( () => parse_mocap_data(text) )
@@ -320,6 +322,7 @@
                 // but nothing i did to the geometry buffer would actually make the lines move
                 // so this is a way to do it by the deadline
                 scene.remove.apply(scene, scene.children);
+                scene.add( cube );
                 moveMocapModel( mocap_data, frames_data[f] );
                 f += 1;
                 if ( f >= frames_data.length )

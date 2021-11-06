@@ -1,297 +1,102 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-		<title>Animation!</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <!---
-    <div class="topnav">
-        <a href="../../index.html">Home</a>
-        <a class="active" href="../projects.html">Projects</a>
-        <a href="https://www.linkedin.com/in/patrick-ribas/">LinkedIn</a>
-        <a href="../../Patrick_Ribas_Resume.pdf">Resume</a>
-        <a href="../../contact.html">Contact</a>
-    </div>
-    <div class="title">
-        CSCI 712: Animation HW 2
-    </div>
-    -->
-    <div class="three">
-        <style>
-            body { text-align: center; }
-        </style>
+<html lang="en">
+	<head>
+	  <title>three.js webgl - loaders - BVHLoader</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+		<style>
+			body {
+				background-color: #eee;
+				color: #444;
+			}
+			a {
+				color: #08f;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="info">
+			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - BVH Loader<br/>
+			animation from <a href="http://mocap.cs.cmu.edu/">http://mocap.cs.cmu.edu/</a>
+		</div>
         <script src="../js/three.js"></script>
-        <script type="text/javascript" src="../js/dat.gui.min.js"></script>
 		<script type="module">
+
             import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
+			import { BVHLoader } from './jsm/loaders/BVHLoader.js';
 
-            
-            var text = "";
-            var mocap_data = null;
-            var frames_data = null;
+			const clock = new THREE.Clock();
 
-            class MocapPoint 
-            {
-                constructor(parent) 
-                {
-                    this.name = "";
-                    this.position = null;
-                    this.offset = new THREE.Vector3(0, 0, 0);
-                    this.children = [];
-                    this.parent = parent;
-                    this.geometry = null;
-                    //this.channels = [];
-                }
+			let camera, controls, scene, renderer;
+			let mixer, skeletonHelper;
 
-                setName(n)
-                {
-                    this.name = n;
-                }
+			init();
+			animate();
 
-                setPosition()
-                {
-                    if ( this.parent == null )
-                    {
-                        if ( this.position == null ) 
-                        { 
-                            this.position = new THREE.Vector3(0, 0, 0);
-                        }
-                    }
-                    else
-                    {
-                        if ( this.position == null ) 
-                        { 
-                            this.position = new THREE.Vector3(0, 0, 0);
-                        }
-                        this.position.x = this.parent.position.x + this.offset.x;
-                        this.position.y = this.parent.position.y + this.offset.y;
-                        this.position.z = this.parent.position.z + this.offset.z;
-                    }
-                }
+			const loader = new BVHLoader();
+			loader.load( "models/bvh/pirouette.bvh", function ( result ) {
 
-                setOffset(x, y, z)
-                {
-                    this.offset.x = x;
-                    this.offset.y = y;
-                    this.offset.z = z;
-                }
+				skeletonHelper = new THREE.SkeletonHelper( result.skeleton.bones[ 0 ] );
+				skeletonHelper.skeleton = result.skeleton; // allow animation mixer to bind to THREE.SkeletonHelper directly
 
-                setChannels( data )
-                {
-                    if ( parseInt(data[1]) == 6 )
-                    {
+				const boneContainer = new THREE.Group();
+				boneContainer.add( result.skeleton.bones[ 0 ] );
 
-                    }
-                    else
-                    {
+				scene.add( skeletonHelper );
+				scene.add( boneContainer );
 
-                    }
-                }
+				// play animation
+				mixer = new THREE.AnimationMixer( skeletonHelper );
+				mixer.clipAction( result.clip ).setEffectiveWeight( 1.0 ).play();
 
-                setGeometry( g )
-                {
-                    this.geometry = g;
-                }
+			} );
 
-                update()
-                {
+			function init() {
 
-                    
-                    this.setPosition();
-                    if ( this.parent != null )
-                    {
-                        var obj = this.geometry.geometry.attributes.position.array;
-                        console.log(obj);
-                        obj[0] = this.position.x;
-                        obj[1] = this.position.y;
-                        obj[2] = this.position.z;                
-                        obj[3] = this.parent.position.x;
-                        obj[4] = this.parent.position.y;
-                        obj[5] = this.parent.position.z; 
-                    }
-                    
-                    for ( var i = 0; i < this.children.length; i++ )
-                    {
-                        this.children[i].update();
-                    }
-                }
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
+				camera.position.set( 0, 200, 300 );
 
-                addChild(c)
-                {
-                   this.children.push(c); 
-                }
-            }
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xeeeeee );
 
-            function set(a)
-            {
-                text = a;
-            }
+				scene.add( new THREE.GridHelper( 400, 10 ) );
 
-            function parse_mocap_data( data )
-            {
-                var lines = data.replace(/(\r|\t)/gm, " ").trim().split("MOTION");
-                var figure_data = lines[0].split(/\n/);
-                var frame_data = lines[1];
-                // process figure
-                var line = "";
-                var cur_point = null;
-                var new_point = null;
-                var root;
-                var x,y,z;
-                for ( var i = 1; i < figure_data.length; i++ )
-                {
-                    line = figure_data[i];
-                    if ( line.includes( "{" )  )
-                    {   
-                    }
-                    else if ( line.includes( "}" ) )
-                    {
-                        cur_point = cur_point.parent;
-                    }
-                    else if ( line.includes( "OFFSET" ) )
-                    {
-                        line = line.trim().split(" ");
-                        x = parseFloat(line[1]);
-                        y = parseFloat(line[2]);
-                        z = parseFloat(line[3]);
-                        cur_point.setOffset(x, y, z);
-                    }
-                    else if ( line.includes( "CHANNELS" ) )
-                    {
-                        cur_point.setChannels( line.trim().split("\s") );
-                    }
-                    else if ( line.includes( "JOINT" ) || line.includes( "ROOT" )  || line.includes( "End Site" ) )
-                    {
-                        new_point = new MocapPoint(cur_point);
-                        new_point.setName( line.trim().split(" ")[1] );
-                        if ( line.includes( "ROOT" ) )
-                        {
-                            root = new_point;
-                        }
-                        else
-                        {
-                            cur_point.addChild(new_point);
-                        }
-                        cur_point = new_point;
-                    }
-                }
-                // process frames of motion
-                var frames = [];
-                // TODO
-                mocap_data = root;
-                frames_data = frames;
-            }
+				// renderer
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );
 
-            function createMocapModel( point )
-            {
-                point.setPosition();
-                // draw line to parent
-                if ( point.parent != null )
-                {
-                    const material = new THREE.LineBasicMaterial({
-                        color: 0xffff00
-                    });
+				controls = new OrbitControls( camera, renderer.domElement );
+				controls.minDistance = 300;
+				controls.maxDistance = 700;
 
-                    const points = [];
-                    points.push( point.parent.position );
-                    points.push( point.position );
-                    const geometry = new THREE.BufferGeometry().setFromPoints( points );
-                    const line = new THREE.Line( geometry, material );
-                    line.geometry.attributes.position.needsUpdate = true;
-                    scene.add( line );
-                    point.setGeometry( line );
-                }
-                // create point for self
-                // recurse per child
-                for ( var i = 0; i < point.children.length; i++ )
-                {
-                    createMocapModel( point.children[i] );
-                }
-            }
+				window.addEventListener( 'resize', onWindowResize );
 
-            function moveMocapModel( root )
-            {
-                root.position.x += 1;
-                root.update();
-            }
+			}
 
-            function radians( degrees )
-            {
-                return degrees * Math.PI / 180;
-            }
+			function onWindowResize() {
 
-            function lerp(p1, p2, u)
-            {
-                return p1 + (p2 - p1) * u;
-            }
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
 
-            function integrate( f, df, h )
-            {
-                // Euler method
-                var F = f.clone();
-                F.x += df.x * h;
-                F.y += df.y * h;
-                F.z += df.z * h;
-                return F;
-            }
+				renderer.setSize( window.innerWidth, window.innerHeight );
 
-            // scene setup
-            var w = window.innerWidth - 20;
-            var h = window.innerHeight - 20;
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera( 75, w/h, 0.1, 1000 );
-            camera.position.z = 100;
-            camera.position.x = 100;
-            camera.position.y = 100;
-            camera.lookAt( new THREE.Vector3(0, 0, 0));
-            const renderer = new THREE.WebGLRenderer( {antialias: true});
-            var controls = new OrbitControls( camera, renderer.domElement );
-            controls.target.set( 0, 0, 0 );
-            renderer.setSize( w, h );
-            document.body.appendChild( renderer.domElement );
+			}
 
-            var n = 5;
-            var width = n * 2;
-            var height = n;
-            const geometry = new THREE.BoxGeometry(n, n, n);
-            var materials = [];
-            var colors = [0x00ffff, 0xff00ff, 0x00ff00, 0x0000ff, 0xff0000, 0xffff00];
-            for ( var i = 0; i < 6; i ++ )
-            {
-                var material = new THREE.MeshBasicMaterial( { color: colors[i] } );
-                materials.push(material);
-            }
+			function animate() {
 
-            const cube = new THREE.Mesh( geometry, materials );
-            cube.position.x = 0;
-            cube.position.y = 0;
-            cube.position.z = 0;
-            //scene.add( cube );
+				requestAnimationFrame( animate );
 
-            var mocap_model = null;
-            
-            const do_things = fetch("https://raw.githubusercontent.com/PatRibas/PatRibas.github.io/master/projects/712/hw3/Sneak.bvh")
-                .then(req => req.text())
-                .then(text => set(text))
-                .then( () => parse_mocap_data(text) )
-                .then( () => createMocapModel( mocap_data ) )
-                .then( () => animate() );
-            
-            var init_time = new THREE.Clock();
-            var once = true;
-            function animate() { // main
-                requestAnimationFrame( animate );
-                if ( once ) 
-                { 
-                    moveMocapModel( mocap_data );
-                    //once = !once;
-                }
-                renderer.render( scene, camera );
-            }
-            
-        </script>
-    </div>
-</body>
+				const delta = clock.getDelta();
+
+				if ( mixer ) mixer.update( delta );
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+	</body>
 </html>
