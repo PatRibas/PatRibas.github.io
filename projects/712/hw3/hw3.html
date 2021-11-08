@@ -31,7 +31,7 @@
             var text = "";
             var mocap_data = null;
             var frames_data = null;
-            var url = "https://raw.githubusercontent.com/PatRibas/PatRibas.github.io/master/projects/712/hw3/Jog.bvh"
+            var url = "https://raw.githubusercontent.com/PatRibas/PatRibas.github.io/master/projects/712/hw3/wave.bvh"
 
             class MocapPoint 
             {
@@ -63,37 +63,30 @@
                     var matTrans = new THREE.Matrix4();
                     matTrans.makeTranslation( this.offset.x, this.offset.y, this.offset.z );
                     
-                    
                     var matY = new THREE.Matrix4();
                     var axis = new THREE.Vector3(  0, 1, 0  );
-                    matY.makeRotationAxis( axis, radians(this.yrot) );
+                    matY.makeRotationY( radians(this.yrot) );
 
                     var matX = new THREE.Matrix4();
                     var axis = new THREE.Vector3(  1, 0, 0  );
-                    matX.makeRotationAxis( axis, radians(this.xrot) );
+                    matX.makeRotationX( radians(this.xrot) );
 
                     var matZ = new THREE.Matrix4();
                     var axis = new THREE.Vector3(  0, 0, 1  );
-                    matZ.makeRotationAxis( axis, radians(this.zrot) );
+                    matZ.makeRotationZ( -radians(this.zrot) );
 
                     var matRot = new THREE.Matrix4();
-                    if ( noNaN( matY ) ) 
-                    {
-                        matRot.multiply(matY);
-                    }
-                    if ( noNaN( matX ) ) 
-                    {
-                        matRot.multiply(matX);
-                    }
-                    if ( noNaN( matZ ) ) 
-                    {
-                        matRot.multiply(matZ);
-                    };
-                    matTrans.premultiply( matRot ); 
+                    matY.fromArray( noNaN(matY) );
+                    matX.fromArray( noNaN(matX) );
+                    matZ.fromArray( noNaN(matZ) );
+                    matRot.multiply( matY );
+                    matRot.multiply( matX );
+                    matRot.multiply( matZ );
+                    matTrans.multiply( matRot ); 
 
                     if ( this.parent != null )
                     {
-                        this.matrix.premultiply( this.parent.matrix );
+                        this.matrix.multiply( this.parent.matrix );
                     }
 
                     this.matrix.multiply( matTrans ); 
@@ -127,10 +120,10 @@
                 {
                     if ( isNaN(temp[i]) )
                     {
-                        return false;
+                        temp[i] = 0;
                     } 
                 }
-                return true;
+                return temp;
             }
             function set(a)
             {
@@ -249,9 +242,9 @@
                     var z = point.channels[0]; 
                     var x = point.channels[1];
                     var y = point.channels[2];
-                    point.zrot = frame[z] + point.parent.zrot;
-                    point.xrot = frame[x] + point.parent.xrot;
-                    point.yrot = frame[y] + point.parent.yrot;
+                    point.zrot = frame[z];// + point.parent.zrot;
+                    point.xrot = frame[x];// + point.parent.xrot;
+                    point.yrot = frame[y];// + point.parent.yrot;
                 }
                 for ( var i = 0; i < point.children.length; i++ )
                 {
@@ -313,7 +306,7 @@
 
             const cube = new THREE.Mesh( geometry, materials );
             cube.position.x = 0;
-            cube.position.y = 11;
+            cube.position.y = 0;
             cube.position.z = 0;
             
 
