@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+		<title>HW4</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="text/javascript" src="/home/patrick/public_html/PatRibas.github.io/projects/fluids/gl-matrix-min.js"></script>
+</head>
+<body>
+  <style>
+    body { text-align: center; }
+  </style>
+<!--- <script src="../js/three.js"></script> ---> 
+<script type="module">
+    import * as THREE from "https://threejs.org/build/three.module.js";
+    import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
+
+    class Particle
+    {
+        constructor(x, y, z, maxTime, velocity)
+        {
+        this.particle = new THREE.PointLight( 0xffff00, 1, 0 );
+        this.particle.decay = 2;
+        // either a geometry or a THREE.Points must exist for this
+        // to be rendered instead of just cast shadows on other things.
+        // Geometry is easier to add shape and opacity to.
+        this.particle.add( new THREE.Mesh(
+            new THREE.SphereGeometry(0.01, 6, 6),
+            new THREE.MeshBasicMaterial({ color: 0xffff00 }) 
+        ));
+        this.offset = new THREE.Vector3(x, y, z);
+        this.particle.children[0].material.transparent = true;
+        this.particle.children[0].material.opacity = 0.75;
+        this.position = this.particle.position;
+        this.velocity = velocity;
+        this.setPosition();
+        this.maxTime = maxTime;
+        scene.add(this.particle);
+        this.timer = new THREE.Clock();
+        //this.particle.material = material = new THREE.PointsMaterial( { size: 0.05, blending: THREE.AdditiveBlending, depthTest: false, transparent: true } );
+        //this.particle.material.color.setRGB( 0, 0, 1 );
+        }
+        getTime()
+        {
+        return this.timer.getElapsedTime();
+        }
+
+        shouldDie()
+        {
+            return this.timer.getElapsedTime() > this.maxTime;
+        }
+
+        reset(x, y, z, velocity)
+        {
+            this.offset.x = x;
+            this.offset.y = y;
+            this.offset.z = z;
+            this.velocity = velocity;
+            this.timer = new THREE.Clock();
+        }
+        setPosition()
+        {
+            this.position.x = mouse.x + this.offset.x;
+            this.position.y = mouse.y +  this.offset.y;
+            this.position.z = this.offset.z;
+        }
+
+        updateColor()
+        {
+            var c1 = this.particle.color;
+            var c2 = this.particle.children[0].material.color;
+            var ratio = this.getTime()/this.maxTime ;
+            var new_g = lerp( 1.0, 0.0, ratio);
+            c1.g = new_g;
+            c2.g = new_g;
+        }
+
+        updatePosition()
+        {
+            this.offset = integrate(this.offset, this.velocity, 0.1);
+            this.setPosition();
+        }
+    }
+
+    function radians( degrees )
+    {
+        return degrees * Math.PI / 180;
+    }
+
+    function lerp(p1, p2, u)
+    {
+        return p1 + (p2 - p1) * u;
+    }
+
+    function integrate( f, df, h )
+    {
+        // Runge-Kutta 2nd order
+        // f and df are both Vector3 objects representing
+        // the evaluated functions at the evaluated point
+        var mid;
+        var F = f.clone();
+        // x
+        mid = f.x + (h/2) * df.x;
+        F.x = f.x + h * ((mid - f.x) / (h / 2));
+        // y
+        mid = f.y + (h/2) * df.y;
+        F.y = f.y + h * ((mid - f.y) / (h / 2));
+        // z
+        mid = f.z + (h/2) * df.z;
+        F.z = f.z + h * ((mid - f.z) / (h / 2));
+        return F;
+    }
+
+    function generate_velocity()
+    {
+        /*var velocity = new THREE.Vector3(-0.5, 0, 0);
+        var rot_y = (Math.random() - 0.5) * 30;
+        velocity.applyAxisAngle( new THREE.Vector3(0, 1, 0), radians(rot_y) );
+        var rot_z = (Math.random()) * 30;
+        velocity.applyAxisAngle( new THREE.Vector3(0, 0, 1), radians(rot_z) );*/
+        var r = Math.sqrt( Math.random() );
+        var theta = Math.random() * 2 * Math.PI;
+        var y = r * Math.cos(theta)
+        var z = r * Math.sin(theta)
+        var velocity = new THREE.Vector3(-1, y/4, z/4);
+        return velocity;
+    }
+
+    // https://stackoverflow.com/questions/30860773/how-to-get-the-mouse-position-using-three-js
+    var mouse = new THREE.Vector2()
+    document.addEventListener('mousemove', onDocumentMouseMove, false);
+    function onDocumentMouseMove(event) {      
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    }
+
+
+    // camera and window setup
+    var w = window.innerWidth - 30;
+    var h = window.innerHeight - 30;
+    var width = w;
+    var height = h;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera( 75, w/h, 0.0001, 1000 );
+    //const camera = new THREE.OrthographicCamera( -1, 1, -1, 1, 0.1, 1000 ); 
+    const renderer = new THREE.WebGLRenderer({ maxLights: 1000 });
+    renderer.setSize( w, h );
+    document.body.appendChild( renderer.domElement );
+    var controls = new OrbitControls( camera, renderer.domElement );
+    controls.target.set( 0, 0, 0 );
+
+    const geometry = new THREE.BoxGeometry( 1, 1, 1 );
+    const material = new THREE.MeshBasicMaterial( {color: 0xffffff} );
+    const cube = new THREE.Mesh( geometry, material );
+    //scene.add( cube );
+
+    // scene setup
+    camera.position.z = 2;
+    camera.position.x = 0;
+    camera.position.y = 0;
+    camera.lookAt(0, 0, 0);
+    
+    var timer = new THREE.Clock();
+    var t0 = 0;
+    var num_particles = 1000;
+    var particles = [];
+    for ( var i = 0; i < num_particles; i++ )
+    {
+        particles.push( new Particle(Math.random() / 32, //x
+                                     Math.random() / 32, //y
+                                     Math.random() / 32, //z
+                                     Math.random() * 2, //lifetime
+                                     generate_velocity()
+                                    ));
+    }
+    
+    var t;
+    particles[0].updateColor();
+
+    function animate() {
+        requestAnimationFrame( animate );
+        var t1 = timer.getElapsedTime();
+        t = t1 - t0;
+        
+        for ( var i = 0; i < num_particles; i++ )
+        {
+            var particle = particles[i];
+            //particle.position.copy( integrate(particle.position, 
+            if ( particle.position.y > 2 )
+            {
+            particle.position.y = -2;
+            }
+            if ( particle.position.y < -2 )
+            {
+            particle.position.y = 2;
+            }
+            if ( particle.shouldDie() )
+            {
+                particle.reset(Math.random() / 8, //x
+                               Math.random() / 8, //y
+                               Math.random() / 8, //z
+                               generate_velocity());
+            }
+            particle.updateColor();
+            particle.updatePosition();
+            
+        }
+
+        t0 = t1;
+
+        renderer.render( scene, camera );
+    }
+    animate();
+
+</script>
+</body>
+</html>
