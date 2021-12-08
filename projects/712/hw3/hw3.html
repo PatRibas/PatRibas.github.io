@@ -31,8 +31,8 @@
             var text = "";
             var mocap_data = null;
             var frames_data = null;
-            var url = "https://raw.githubusercontent.com/PatRibas/PatRibas.github.io/master/projects/712/hw3/wave.bvh"
-
+            var url = "https://raw.githubusercontent.com/PatRibas/PatRibas.github.io/master/projects/712/hw3/Sit.bvh"
+            var url_base = "https://raw.githubusercontent.com/PatRibas/PatRibas.github.io/master/projects/712/hw3/";
             class MocapPoint 
             {
                 constructor(parent) 
@@ -73,15 +73,15 @@
 
                     var matZ = new THREE.Matrix4();
                     var axis = new THREE.Vector3(  0, 0, 1  );
-                    matZ.makeRotationZ( -radians(this.zrot) );
+                    matZ.makeRotationZ( radians(this.zrot) );
 
                     var matRot = new THREE.Matrix4();
                     matY.fromArray( noNaN(matY) );
                     matX.fromArray( noNaN(matX) );
                     matZ.fromArray( noNaN(matZ) );
-                    matRot.multiply( matY );
-                    matRot.multiply( matX );
                     matRot.multiply( matZ );
+                    matRot.multiply( matX );
+                    matRot.multiply( matY );
                     matTrans.multiply( matRot ); 
 
                     if ( this.parent != null )
@@ -120,10 +120,10 @@
                 {
                     if ( isNaN(temp[i]) )
                     {
-                        temp[i] = 0;
+                        return new THREE.Matrix4().toArray(); //temp[i] = 0;
                     } 
                 }
-                return temp;
+                return mat4.toArray();//temp;
             }
             function set(a)
             {
@@ -319,23 +319,58 @@
                 .then( () => createMocapModel( mocap_data ) )
                 .then( () => animate() );
             
+            // GUI Setup
+            const datGui  = new dat.GUI({ autoPlace: true });
+            datGui.domElement.id = 'gui';
+            function setURL( url_str )
+            {
+                f = 0;
+                url = url_base + url_str;
+            }
+            var files = ['Ambient.bvh', 'Stand.bvh', 'Turn.bvh', 'Arms.bvh', 'PIckup.bvh', 'wave.bvh', 'Jog.bvh', 'Sit.bvh', 'Circle.bvh', 'Legs.bvh', 'Sneak.bvh', 'tiptoe.bvh']
+            const folder = datGui.addFolder("");
+            var pick_animation  = new function() { 
+                    this.Animation = 0;
+            }
+            
+            folder.add(pick_animation, "Animation", 0, files.length);
+            folder.open();
+
             var init_time = new THREE.Clock();
+            console.log( new THREE.Matrix4() );
+            var prev_pose = 0;
+
             function animate() { // main
-                requestAnimationFrame( animate );
-                // this is the most cursed way to do vertex motion
-                // i.e. remove the lines from the scene and re-add them afterwards
-                // but nothing i did to the geometry buffer would actually make the lines move
-                // so this is a way to do it by the deadline
-                scene.remove.apply(scene, scene.children);
-                scene.add( cube );
-                moveMocapModel( mocap_data, frames_data[f] );
-                f += 1;
-                if ( f >= frames_data.length )
+                if ( prev_pose != pick_animation.Animation )
                 {
-                    f = 0;
+                    console.log(files[pick_animation.Animation]);
+                    setURL( files[pick_animation.Animation] );
+                    prev_pose = pick_animation.Animation;
+                    const do_things = fetch(url)
+                        .then(req => req.text())
+                        .then(text => set(text))
+                        .then( () => parse_mocap_data(text) )
+                        .then( animate() );
+                    renderer.setClearColor (0x000000, 1);
                 }
-                createMocapModel( mocap_data );
-                renderer.render( scene, camera );
+                else 
+                {
+                    requestAnimationFrame( animate );       
+                    // this is the most cursed way to do vertex motion
+                    // i.e. remove the lines from the scene and re-add them afterwards
+                    // but nothing i did to the geometry buffer would actually make the lines move
+                    // so this is a way to do it by the deadline
+                    scene.remove.apply(scene, scene.children);
+                    scene.add( cube );
+                    moveMocapModel( mocap_data, frames_data[f] );
+                    f += 1;
+                    if ( f >= frames_data.length )
+                    {
+                        f = 0;
+                    }
+                    createMocapModel( mocap_data );
+                    renderer.render( scene, camera );
+                }
             }
             
         </script>

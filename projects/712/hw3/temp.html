@@ -35,7 +35,8 @@
 			animate();
 
 			const loader = new BVHLoader();
-			loader.load( "https://raw.githubusercontent.com/PatRibas/PatRibas.github.io/master/projects/712/hw3/Jog.bvh", function ( result ) {
+			var url = "https://raw.githubusercontent.com/PatRibas/PatRibas.github.io/master/projects/712/hw3/wave.bvh"
+			loader.load( url, function ( result ) {
 
 				skeletonHelper = new THREE.SkeletonHelper( result.skeleton.bones[ 0 ] );
 				skeletonHelper.skeleton = result.skeleton; // allow animation mixer to bind to THREE.SkeletonHelper directly
