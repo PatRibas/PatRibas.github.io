@@ -333,18 +333,24 @@
                     this.Animation = 0;
             }
             
-            folder.add(pick_animation, "Animation", 0, files.length);
+            folder.add(pick_animation, "Animation", 0, files.length - 1);
             folder.open();
 
             var init_time = new THREE.Clock();
-            console.log( new THREE.Matrix4() );
             var prev_pose = 0;
 
             function animate() { // main
                 if ( prev_pose != pick_animation.Animation )
                 {
-                    console.log(files[pick_animation.Animation]);
-                    setURL( files[pick_animation.Animation] );
+                    var idx = Math.floor(pick_animation.Animation);
+                    if ( idx > 11 )
+                    {
+                        pick_animation.Animation = 11;
+                        idx = 11;
+                    }
+                    console.log(files[idx]);
+                    setURL( files[idx] );
+                    console.log( url );
                     prev_pose = pick_animation.Animation;
                     const do_things = fetch(url)
                         .then(req => req.text())
