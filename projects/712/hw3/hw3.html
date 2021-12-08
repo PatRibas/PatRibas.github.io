@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-		<title>Animation!</title>
+		<title>BVH Reader</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -332,8 +332,24 @@
             var pick_animation  = new function() { 
                     this.Animation = 0;
             }
-            
             folder.add(pick_animation, "Animation", 0, files.length - 1);
+            var paused = false;
+            var pause = { pause:function()
+                { 
+                    paused = true;
+                }
+            };
+            var play = { play:function()
+                { 
+                    paused = false;
+                }
+            };
+            var fast_forward = new function() {
+                this.fast_forward = 1;
+            }
+            folder.add(fast_forward, "fast_forward", 1, 8);
+            folder.add(pause,'pause'); 
+            folder.add(play,'play'); 
             folder.open();
 
             var init_time = new THREE.Clock();
@@ -369,7 +385,11 @@
                     scene.remove.apply(scene, scene.children);
                     scene.add( cube );
                     moveMocapModel( mocap_data, frames_data[f] );
-                    f += 1;
+                    
+                    if ( !paused )
+                    {
+                        f += Math.floor(1 * fast_forward.fast_forward);
+                    }
                     if ( f >= frames_data.length )
                     {
                         f = 0;

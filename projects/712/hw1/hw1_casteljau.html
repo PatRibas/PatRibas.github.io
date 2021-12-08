@@ -119,6 +119,25 @@
                 }
                 return [prev_points[0], prev_qs[0]];
             }
+
+            function make_bezier( keyframes )
+            {
+                var curve = []
+                var cp1, cp2, frame;
+                curve.push( keyframes.pop() );
+                while ( keyframes.length > 1 )
+                {
+                    frame = keyframes.pop();
+                    cp1 = frame;
+                    cp1[1] += 1;
+                    cp2 = frame;
+                    cp2[1] -= 1;
+                    curve.push(cp1);
+                    curve.push(cp2);
+                }
+                curve.push( keyframes.pop() );
+                return curve
+            }
             
             var hasClicked = false;
             function onMouseDown(event) {
@@ -172,13 +191,19 @@
                 }
                 else
                 {
-                    if ( keyframes == null || t > 9 )
+                    if ( keyframes == null )
                     {
                         keyframes = parse_keyframe_info( text );
+                        //keyframes = make_bezier( keyframes );
                         time1 = keyframes[0][0];
                         time2 = keyframes[keyframes.length - 1][0];
                         init_time = new THREE.Clock();
                     } 
+                    else if ( t >= 9 )
+                    {
+                        init_time = new THREE.Clock();
+                        t = 0;
+                    }
                     else 
                     {
                         t = init_time.getElapsedTime();
@@ -201,7 +226,7 @@
         This is the version of the homework using the de Casteljau construction. To see the 
         slerp and lerp version, click <a href="hw1.html">here</a>.
         <br>
-        Left click to start! You will have to refresh this one to play it again.
+        Left click to start!
     </div>
 </body>
 </html>

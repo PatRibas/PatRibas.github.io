@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-		<title>HW4</title>
+		<title>Basic Particle System</title>
     <link rel="stylesheet" href="style.css">
     <script type="text/javascript" src="/home/patrick/public_html/PatRibas.github.io/projects/fluids/gl-matrix-min.js"></script>
 </head>
@@ -10,7 +10,7 @@
   <style>
     body { text-align: center; }
   </style>
-<!--- <script src="../js/three.js"></script> ---> 
+<script type="text/javascript" src="../js/dat.gui.min.js"></script>
 <script type="module">
     import * as THREE from "https://threejs.org/build/three.module.js";
     import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
@@ -80,6 +80,11 @@
             this.offset = integrate(this.offset, this.velocity, 0.1);
             this.setPosition();
         }
+
+        updateVelocity(force)
+        {
+            this.velocity = integrate(this.velocity, force, 0.1);
+        }
     }
 
     function radians( degrees )
@@ -134,6 +139,15 @@
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
 
+    // gui setup
+    const datGui  = new dat.GUI({ autoPlace: true });
+    datGui.domElement.id = 'gui';
+    var vel_controls = new function() {
+                this.gravity = 0;
+    }
+    const folder = datGui.addFolder("Controls");
+    folder.add(vel_controls, "gravity", -4, 0);
+    folder.open();
 
     // camera and window setup
     var w = window.innerWidth - 30;
@@ -149,8 +163,8 @@
     var controls = new OrbitControls( camera, renderer.domElement );
     controls.target.set( 0, 0, 0 );
 
-    const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-    const material = new THREE.MeshBasicMaterial( {color: 0xffffff} );
+    const geometry = new THREE.BoxGeometry( 0.3, 0.3, 0.3 );
+    const material = new THREE.MeshPhongMaterial( {color: 0xffffff} );
     const cube = new THREE.Mesh( geometry, material );
     //scene.add( cube );
 
@@ -176,24 +190,17 @@
     
     var t;
     particles[0].updateColor();
+    var v;
 
     function animate() {
         requestAnimationFrame( animate );
         var t1 = timer.getElapsedTime();
         t = t1 - t0;
+        v = new THREE.Vector3(0, vel_controls.gravity, 0);
         
         for ( var i = 0; i < num_particles; i++ )
         {
             var particle = particles[i];
-            //particle.position.copy( integrate(particle.position, 
-            if ( particle.position.y > 2 )
-            {
-            particle.position.y = -2;
-            }
-            if ( particle.position.y < -2 )
-            {
-            particle.position.y = 2;
-            }
             if ( particle.shouldDie() )
             {
                 particle.reset(Math.random() / 8, //x
@@ -202,6 +209,8 @@
                                generate_velocity());
             }
             particle.updateColor();
+            
+            particle.updateVelocity( v );
             particle.updatePosition();
             
         }
