@@ -16,7 +16,7 @@ body { text-align: center; }
     import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
     import { MarchingCubes } from "https://threejs.org/examples/jsm/objects/MarchingCubes.js";
 
-    function lerp(p1, p2, u)
+    function lerp(p1, p2, u) // need I say more?
     {
         return p1 + (p2 - p1) * u;
     }
@@ -44,6 +44,8 @@ body { text-align: center; }
         return F; 
     }
 
+    // the SPH interpolation of the density of a particle
+    // since SPH has a division by density, this is a sum of kernels
     function density( v_lst, p_idx, W, h )
     {
         // this is so expensive....
@@ -99,6 +101,7 @@ body { text-align: center; }
         return A;
     }
 
+    // a kernel from Muller et al.
     function w_poly_6( r, h )
     {
         if ( 0 <= r && r <= h )
@@ -108,6 +111,7 @@ body { text-align: center; }
         return 0;
     }
 
+    // the basic kernel from Wang's slides
     function w_base( xi, xj, h )
     {
         var q = xi.distanceTo(xj)/h;
@@ -128,6 +132,7 @@ body { text-align: center; }
     }
 
 
+    // the gradient kernel from Wang's slides
     function w_gradient( xi, xj, h )
     {
         var q = xi.distanceTo(xj)/h;
@@ -152,6 +157,7 @@ body { text-align: center; }
         return grad;
     }
 
+    // the Laplacian kernel from Wang's slides
     function w_laplacian( xi, xj, h )
     {
         var q = xi.distanceTo(xj)/h;
@@ -176,6 +182,9 @@ body { text-align: center; }
         return (Wij_second * (1/(h**2))) + (Wij * (2/h));
     }
 
+    // the function to calculate pressure
+    // uses the gradient kernel, which returns a vector
+    // and is based on (10) from Muller et al.
     function f_pressure( v_lst, pressures, densities, p_idx, h )
     {
         var dj;
@@ -192,13 +201,13 @@ body { text-align: center; }
             {
                 dj = densities[j];
                 pj = pressures[j];
-                particle_j.x = v_lst[(j * 3)];
+                particle_j.x = v_lst[(j * 3)]; // this is the attribute list
                 particle_j.y = v_lst[(j * 3) + 1];
                 particle_j.z = v_lst[(j * 3) + 2];
                 Wij = w_gradient( particle_i, particle_j, h );
                 if ( dj == 0 )
                 {
-                    dj = 0.00001;
+                    dj = 0.00001; // division by 0 is bad!
                 }
                 Wij.multiplyScalar( (pj + pi)/(2*dj) );               
                 f.add( Wij );
@@ -208,14 +217,18 @@ body { text-align: center; }
         return f;
     }
 
+    // the function to calculate the force of viscosity
+    // uses the laplacian kernel
+    // as well as equation (14) from Muller et al.
+    // but seems to be a little aggressive? 
     function f_viscosity( v_lst, velocities_x, velocities_y, velocities_z, densities, p_idx, h )
     {
         var f = new THREE.Vector3( 0, 0, 0 );
         p_idx = Math.floor(p_idx/3);
         var particle_i = new THREE.Vector3(v_lst[(p_idx * 3)], v_lst[(p_idx * 3) + 1], v_lst[(p_idx * 3) + 2] );
-        var vi = new THREE.Vector3(velocities_x[Math.floor(p_idx/3)],
-                                   velocities_y[Math.floor(p_idx/3)],
-                                   velocities_z[Math.floor(p_idx/3)]);
+        var vi = new THREE.Vector3(velocities_x[p_idx],
+                                   velocities_y[p_idx],
+                                   velocities_z[p_idx]);
         var particle_j = new THREE.Vector3(0, 0, 0);
         var vj = new THREE.Vector3(0, 0, 0);
         var Wij, d;
@@ -228,24 +241,30 @@ body { text-align: center; }
                 particle_j.y = v_lst[(j * 3) + 1];
                 particle_j.z = v_lst[(j * 3) + 2];
                 Wij = w_laplacian( particle_i, particle_j, h )
-                vj.x = velocities_x[Math.floor(j/3)];
-                vj.y = velocities_y[Math.floor(j/3)];
-                vj.z = velocities_z[Math.floor(j/3)];
+                vj.x = velocities_x[j];
+                vj.y = velocities_y[j];
+                vj.z = velocities_z[j];
                 vj.sub( vi );
+                if ( d == 0 )
+                {
+                    d = 0.00001; // div by 0 = bad!
+                }
                 vj.multiplyScalar( Wij/d );
                 f.add( vj );
             }
         }
-        f.multiplyScalar( -1 );// * vi.length() );
+        //f.multiplyScalar( -1 );// * vi.length() );
         return f;
     }
 
-
+    // the simplest function ever written!
+    // returns the force of gravity
     function f_gravity()
     {
         return new THREE.Vector3(0, -9.81, 0);
     }
 
+    // this is a function used to update the spheres rendered by marching cubes
     function update_marching_cubes( time, controls )
     {
         effect.reset()
@@ -266,9 +285,9 @@ body { text-align: center; }
         {
             effect.addPlaneY( 6, subtract );
         }
-        //effect.addPlaneZ( 1, 10 );
-        //effect.addPlaneX( 1, 10 );
     }
+
+    // BEGIN MAIN CODE BODY 
     // gui setup
     const datGui  = new dat.GUI({ autoPlace: true });
     datGui.domElement.id = 'gui';
@@ -280,7 +299,7 @@ body { text-align: center; }
                 this.str_const = 1.2;
                 this.plane = true;
                 this.particles = false;
-                this.h = 0.55;
+                this.h = 0.45;
     }
     const folder = datGui.addFolder("Controls");
     folder.add(param_controls, "k", 0, 3);
@@ -294,7 +313,7 @@ body { text-align: center; }
                 for ( var k = 0; k < num_particles * 3; k+= 3 )
                 {
                     const x = Math.random()/5;
-                    const y = n;
+                    const y = Math.random()/5 + n ;
                     const z = Math.random()/5;
                     positions[k] =  x ;
                     positions[k + 1] =  y ;
@@ -328,7 +347,7 @@ body { text-align: center; }
     const geometry = new THREE.BufferGeometry();
     const vertices = [];
     const colors = [];
-    const num_particles = 35;
+    const num_particles = 25;
     var p_radius = 0.05;
 
 
@@ -457,7 +476,7 @@ body { text-align: center; }
             cur_pos.x =  temp.x ;
             cur_pos.y =  temp.y ;
             cur_pos.z =  temp.z ;
-            // TODO
+            // get forces
             f.set(0, 0, 0);
             f.add( f_gravity() ); 
             p = f_pressure( positions, pressures, densities, i, param_controls.h );
@@ -471,13 +490,10 @@ body { text-align: center; }
             var v = f_viscosity(positions, velocities_x, velocities_y, velocities_z, densities, i, param_controls.h );
             v.multiplyScalar( param_controls.mu );
             f.add( v );
-            //f.add( f_surface(positions, i, p_radius * param_controls.search_radius_multiplier ) );
             temp = integrate(vel, f, t);
             vel.x = temp.x ;
             vel.y = temp.y ;
             vel.z = temp.z ;
-
-            //f.multiplyScalar( 1/1000000000 );
 
             // check bounds and collide with the wall if we are out
             if ( cur_pos.y < -n / 2 )
@@ -519,7 +535,7 @@ body { text-align: center; }
             new_velocities_y[Math.floor(i / 3)] = vel.y;
             new_velocities_z[Math.floor(i / 3)] = vel.z;
         }
-        // update values
+        // update values for next loop step
         for ( var i = 0; i < pressures.length; i++ )
         {
             pressures[i] = new_pressures[i];
