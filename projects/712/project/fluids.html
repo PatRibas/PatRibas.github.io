@@ -1,149 +1,541 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-		<title>Fluids!</title>
-    <link rel="stylesheet" href="style_applet.css">
-    <script type="text/javascript" src="/home/patrick/public_html/PatRibas.github.io/projects/fluids/gl-matrix-min.js"></script>
+<meta charset="utf-8">
+    <title>Fluids!</title>
+<link rel="stylesheet" href="style.css">
+<script type="text/javascript" src="/home/patrick/public_html/PatRibas.github.io/projects/fluids/gl-matrix-min.js"></script>
 </head>
 <body>
-  <style>
-    body { text-align: center; }
-  </style>
-<!--- <script src="../js/three.js"></script> ---> 
+<style>
+body { text-align: center; }
+</style>
+<script type="text/javascript" src="../js/dat.gui.min.js"></script>
 <script type="module">
-      import * as THREE from "https://threejs.org/build/three.module.js";
-      import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
-      var n = 1.5; // cube bounds
+    import * as THREE from "https://threejs.org/build/three.module.js";
+    import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
+    import { MarchingCubes } from "https://threejs.org/examples/jsm/objects/MarchingCubes.js";
 
-      function lerp(p1, p2, u)
-      {
-          return p1 + (p2 - p1) * u;
-      }
+    function lerp(p1, p2, u)
+    {
+        return p1 + (p2 - p1) * u;
+    }
 
-      function get_new_pos( particle, t0, t1 )
-      {
-        var x = particle.position.x;
-        var y = particle.position.y;
-        var z = particle.position.z;
-        var vy = accel( particle, t0, t1 ) * (t1 - t0);
-
-        if ( y <= -n && particle.velocity.y < 0 )
+    function integrate( f, df, h )
+    {
+        // Runge-Kutta 2nd order
+        // f and df are both Vector3 objects representing
+        // the evaluated functions at the evaluated point
+        if ( h == 0 )
         {
-          particle.velocity.y = -particle.velocity.y - 0.05 * (-particle.velocity.y);
-          particle.velocity.y += vy;
-          if ( particle.velocity.y <= vy )
-          {
-            particle.velocity.y = 0;
-          }
+            h = 0.01;
+        }
+        var mid;
+        var F = f.clone();
+        // x
+        mid = f.x + (h/2) * df.x;
+        F.x = f.x + h * ((mid - f.x) / (h / 2));
+        // y
+        mid = f.y + (h/2) * df.y;
+        F.y = f.y + h * ((mid - f.y) / (h / 2));
+        // z
+        mid = f.z + (h/2) * df.z;
+        F.z = f.z + h * ((mid - f.z) / (h / 2));
+        return F; 
+    }
+
+    function density( v_lst, p_idx, W, h )
+    {
+        // this is so expensive....
+        var rho = 0;
+        var particle = new THREE.Vector3(v_lst[(p_idx * 3)], v_lst[(p_idx * 3) + 1], v_lst[(p_idx * 3) + 2]);
+        var temp_vec = new THREE.Vector3(0, 0, 0);
+        for ( var i = 0; i < v_lst.length; i += 3 )
+        {
+            // get other particle info
+            temp_vec.x = v_lst[i];
+            temp_vec.y = v_lst[i + 1];
+            temp_vec.z = v_lst[i + 2];
+            rho += w_base( particle, temp_vec, h);
+        }
+        return rho;
+    }
+
+
+    function sph_interp( v_lst, data_lst, p_idx, W, h )
+    {
+        // This function implements the SPH scalar evaluation 
+        // of a scalar quantity for a given particle
+        // v_lst: the list of vertices. used for distance calcs
+        // data_lst: the list of values we will interpolate over
+        // p_idx: the index of the particle's x coordinate in v_lst
+        // W: the smoothing kernel. A function of a Vec3() and h.
+        // h: the maximum distance between particles. also a W parameter
+        // not actually called: this is the general form of the function
+        // which is adapted to specific other functions
+        // as they have math that's not as easy to carry through function calls
+        // like laplacians and other parameter changes
+        var rho = 0; // density
+        var w = 0;
+        var A = 0;
+        var temp_vec = new THREE.Vector3(0, 0, 0);
+        var particle = new THREE.Vector3(v_lst[(p_idx * 3)], v_lst[(p_idx * 3) + 1], v_lst[(p_idx * 3) + 2]);
+        for ( var i = 0; i < data_lst.length; i++ )
+        {
+            // get other particle info
+            temp_vec.x = v_lst[(i * 3)];
+            temp_vec.y = v_lst[(i * 3) + 1];
+            temp_vec.z = v_lst[(i * 3) + 2];
+            // TODO: reread paper to make sure that r is correct
+            w = W( particle.distanceTo(temp_vec), h);
+            if ( k != 0 )
+            {
+                // TODO
+                rho = density( v_lst, p_idx, W, h );
+                A += (data_lst[i] * w) / rho;
+            }
+        }
+        A *= rho;
+        return A;
+    }
+
+    function w_poly_6( r, h )
+    {
+        if ( 0 <= r && r <= h )
+        {
+            return (315 / (64 * Math.PI * h**9)) * ((h**2 - r**2)**3);
+        }
+        return 0;
+    }
+
+    function w_base( xi, xj, h )
+    {
+        var q = xi.distanceTo(xj)/h;
+        var Wij = 3 / (2*Math.PI*(h**3));
+        if ( 0 <= q && q < 1 )
+        {
+            Wij *= (2/3 - q**2 + (1/2)*(q**3));
+        }
+        else if ( 1 <= q && q <= q )
+        {
+            Wij *= (1/6)*( (2-q)**3 );
+        }   
+        else
+        {
+            Wij *= 0;
+        }
+        return Wij;
+    }
+
+
+    function w_gradient( xi, xj, h )
+    {
+        var q = xi.distanceTo(xj)/h;
+        var Wij = 3 / (2*Math.PI*(h**3));
+        var denom = xi.distanceTo(xj) * h;
+        if ( 0 <= q && q < 1 )
+        {
+            Wij *= (-2 * q + (3/2) * (q**2));
+        } 
+        else if ( 1 <= q && q < 2 )
+        {
+            Wij *= -(1/2) * ((2 - q)**2);
         }
         else
         {
-          particle.velocity.y += vy;
+            Wij *= 0;
         }
+        var grad = xi.clone();
+        grad.sub(xj);
+        grad.multiplyScalar(Wij);
+        grad.multiplyScalar(denom);
+        return grad;
+    }
+
+    function w_laplacian( xi, xj, h )
+    {
+        var q = xi.distanceTo(xj)/h;
+        var Wij = 3 / (2*Math.PI*(h**3));
+        var Wij_second = 3 / (2*Math.PI*(h**3));
+        var denom = xi.distanceTo(xj) * h;
+        if ( 0 <= q && q < 1 )
+        {
+            Wij *= (-2 * q + (3/2) * (q**2));
+            Wij_second *= -2 + 3*q;
+        } 
+        else if ( 1 <= q && q < 2 )
+        {
+            Wij *= -(1/2) * ((2 - q)**2);
+            Wij_second *= 2 - q;
+        }
+        else
+        {
+            Wij *= 0;
+            Wij_second *= 0;
+        } 
+        return (Wij_second * (1/(h**2))) + (Wij * (2/h));
+    }
+
+    function f_pressure( v_lst, pressures, densities, p_idx, h )
+    {
+        var dj;
+        var f = new THREE.Vector3( 0, 0, 0 );
+        p_idx = Math.floor(p_idx/3);
+        var particle_i = new THREE.Vector3(v_lst[(p_idx * 3)], v_lst[(p_idx * 3) + 1], v_lst[(p_idx * 3) + 2] );
+        var pi = pressures[Math.floor(p_idx)];
+        var particle_j = new THREE.Vector3(0, 0, 0);
+        var pj = 0; //new THREE.Vector3(0, 0, 0);
+        var Wij;
+        for ( var j = 0; j < pressures.length; j++ )
+        {
+            if ( j != p_idx )
+            {
+                dj = densities[j];
+                pj = pressures[j];
+                particle_j.x = v_lst[(j * 3)];
+                particle_j.y = v_lst[(j * 3) + 1];
+                particle_j.z = v_lst[(j * 3) + 2];
+                Wij = w_gradient( particle_i, particle_j, h );
+                if ( dj == 0 )
+                {
+                    dj = 0.00001;
+                }
+                Wij.multiplyScalar( (pj + pi)/(2*dj) );               
+                f.add( Wij );
+            }
+        }
+        f.multiplyScalar( -1 );
+        return f;
+    }
+
+    function f_viscosity( v_lst, velocities_x, velocities_y, velocities_z, densities, p_idx, h )
+    {
+        var f = new THREE.Vector3( 0, 0, 0 );
+        p_idx = Math.floor(p_idx/3);
+        var particle_i = new THREE.Vector3(v_lst[(p_idx * 3)], v_lst[(p_idx * 3) + 1], v_lst[(p_idx * 3) + 2] );
+        var vi = new THREE.Vector3(velocities_x[Math.floor(p_idx/3)],
+                                   velocities_y[Math.floor(p_idx/3)],
+                                   velocities_z[Math.floor(p_idx/3)]);
+        var particle_j = new THREE.Vector3(0, 0, 0);
+        var vj = new THREE.Vector3(0, 0, 0);
+        var Wij, d;
+        for ( var j = 0; j < velocities_x.length; j++ )
+        {
+            if ( j != p_idx )
+            {
+                d = densities[j];
+                particle_j.x = v_lst[(j * 3)];
+                particle_j.y = v_lst[(j * 3) + 1];
+                particle_j.z = v_lst[(j * 3) + 2];
+                Wij = w_laplacian( particle_i, particle_j, h )
+                vj.x = velocities_x[Math.floor(j/3)];
+                vj.y = velocities_y[Math.floor(j/3)];
+                vj.z = velocities_z[Math.floor(j/3)];
+                vj.sub( vi );
+                vj.multiplyScalar( Wij/d );
+                f.add( vj );
+            }
+        }
+        f.multiplyScalar( -1 );// * vi.length() );
+        return f;
+    }
+
+
+    function f_gravity()
+    {
+        return new THREE.Vector3(0, -9.81, 0);
+    }
+
+    function update_marching_cubes( time, controls )
+    {
+        effect.reset()
+        const subtract = controls.subtract;
+        const strength = (controls.str_const) / ( ( Math.sqrt( positions.length ) - 1 ) / 4 + 1 );
+        var px, py, pz;
+        for ( var i = 0; i < positions.length; i += 3 )
+        {
+            px = positions[i];
+            py = positions[ i + 1 ];
+            pz = positions[ i + 2 ];
+            px = lerp(0, 1, (px + n)/(n*2));
+            py = lerp(0, 1, (py + n)/(n*2));
+            pz = lerp(0, 1, (pz + n)/(n*2));
+            effect.addBall( px, py, pz, subtract, strength, 0x0000ff );
+        }
+        if ( param_controls.plane )
+        {
+            effect.addPlaneY( 6, subtract );
+        }
+        //effect.addPlaneZ( 1, 10 );
+        //effect.addPlaneX( 1, 10 );
+    }
+    // gui setup
+    const datGui  = new dat.GUI({ autoPlace: true });
+    datGui.domElement.id = 'gui';
+    var param_controls = new function() {
+                this.k = 1;
+                this.mu = 1.787 * 10**(-3);
+                this.search_radius_multiplier = 1;
+                this.subtract = 0.1;
+                this.str_const = 1.2;
+                this.plane = true;
+                this.particles = false;
+                this.h = 0.55;
+    }
+    const folder = datGui.addFolder("Controls");
+    folder.add(param_controls, "k", 0, 3);
+    folder.add(param_controls, "mu", 0, 1);
+    folder.add(param_controls, "subtract", 0.00001, 1);
+    folder.add(param_controls, "h", 0.1, 1);
+    folder.add(param_controls, "plane", true, false);
+    folder.add(param_controls, "particles", true, false);
+    var reset = { reset:function()
+            { 
+                for ( var k = 0; k < num_particles * 3; k+= 3 )
+                {
+                    const x = Math.random()/5;
+                    const y = n;
+                    const z = Math.random()/5;
+                    positions[k] =  x ;
+                    positions[k + 1] =  y ;
+                    positions[k + 2] = z ;
+                }
+            }
+        };
+    folder.add(reset,'reset');   
+    folder.open();
+    
+    // camera and window setup
+    var w = window.innerWidth - 30;
+    var h = window.innerHeight - 30;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera( 75, w/h, 0.1, 1000 );
+    const renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setSize( w, h );
+    document.body.appendChild( renderer.domElement );
+    var controls = new OrbitControls( camera, renderer.domElement );
+    controls.target.set( 0, 0, 0 );
+
+    // scene setup
+    var n = 1; // cube bounds
+    const temp_geometry = new THREE.BoxGeometry(n, n, n);
+    var material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+    const cube = new THREE.Mesh( temp_geometry, material );
+    var edges = new THREE.EdgesHelper( cube, 0xff00ff );
+    edges.material.linewidth = 2;
+    scene.add(edges); 
+
+    const geometry = new THREE.BufferGeometry();
+    const vertices = [];
+    const colors = [];
+    const num_particles = 35;
+    var p_radius = 0.05;
+
+
+    for ( var k = 0; k < num_particles; k++ )
+    {
+        const x = 0;
+        const y = 0;
+        const z = 0;
+        vertices.push( x );
+        vertices.push( y );
+        vertices.push( z );
+        colors.push(0, 0, 1.0);
+    }
         
-        y = y + particle.velocity.y * (t1 - t0);
-        if ( y < -n )
+
+    
+    material = new THREE.PointsMaterial( { size: p_radius, blending: THREE.AdditiveBlending, depthTest: false, transparent: true, opacity: 0.75 } );
+    material.color.setRGB( 0, 0, 1 );
+    geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+    // TODO: actual color shader to make water prettier
+    //geometry.setAttribute( 'color', new THREE.Float32BufferAttribute( colors, 3 ) );
+    const particle_system = new THREE.Points( geometry, material );
+    scene.add( particle_system );
+
+    camera.position.z = 2;
+    camera.position.x = 1;
+    camera.position.y = 1;
+    camera.lookAt(0, 0, 0);
+    
+
+    // marching cubes setup
+    var resolution = 50;
+    var cubes_mat = new THREE.MeshPhongMaterial( {color: 0x0000ff, transparent: true, opacity:0.75} );
+    //var cubes_mat = new THREE.MeshBasicMaterial( {color: 0x0000ff} );
+    var effect = new MarchingCubes( resolution, cubes_mat );
+    effect.position.set( 0, 0, 0 );
+    effect.scale.set( n, n, n );
+    scene.add( effect );
+    const light = new THREE.PointLight( 0xffffff, 1, 100 * n ); 
+    light.position.set( 2 * n, 2 * n, 2 * n ); 
+    scene.add( light );
+    
+    // data setup
+    var t0 = 0;
+    var collision_loss = 0.5;
+    const positions = particle_system.geometry.attributes.position.array;
+
+    var new_positions = [];
+    for ( var i = 0; i < positions.length; i++ )
+    {
+        new_positions.push( 0 );
+    }
+    var cur_pos = new THREE.Vector3(0, 0, 0);
+    var vel = new THREE.Vector3(0, 0, 0);
+    var f = new THREE.Vector3(0, 0, 0);
+    var timer = new THREE.Clock({autoStart: true});
+    var velocities_x = []; // equivalent to momentum if mass is uniform
+    var velocities_y = [];
+    var velocities_z = [];
+    var pressures = [];
+    var densities = [];
+    var new_velocities_x = [];
+    var new_velocities_y = [];
+    var new_velocities_z = [];
+    var new_pressures = [];
+    var surface_x = [];
+    var surface_y = [];
+    var surface_z = [];
+    var temp;
+
+    
+    for ( var i = 0; i < positions.length / 3; i++ )
+    {
+        velocities_x.push( 0 );
+        velocities_y.push( 0);
+        velocities_z.push( 0 );
+        pressures.push( density(positions, i, w_poly_6, param_controls.h) );
+        densities.push( density(positions, i, w_poly_6, param_controls.h) );
+        new_velocities_x.push( 0 );
+        new_velocities_y.push( 0 );
+        new_velocities_z.push( 0 );
+        new_pressures.push( 0 );
+        surface_x.push( Math.random() );
+        surface_y.push( Math.random() );
+        surface_z.push( Math.random() );
+        effect.addBall( positions[i], positions[i + 1], positions[i + 2], p_radius * 5, 1, 0x0000ff );
+    }
+    var p, v, s, d;
+    var p_constant = 0.5;
+    
+    var particles_in_scene = true;
+    reset.reset();
+
+    function animate() {
+        requestAnimationFrame( animate );
+        if ( particles_in_scene && !param_controls.particles )
         {
-          y = -n;
-          // TODO: actual collision checks
+            particles_in_scene = !particles_in_scene ;
+            scene.remove( particle_system );
+        }
+        else if ( !particles_in_scene && param_controls.particles )
+        {
+            particles_in_scene = !particles_in_scene ;
+            scene.add( particle_system );
+        }
+        var t1 = timer.getElapsedTime();
+        var t = t1 - t0;
+        particle_system.geometry.attributes.position.needsUpdate = true;
+
+        for ( var i = 0; i < positions.length; i += 3 )
+        {
+            densities[i] = density(positions, i, w_poly_6, param_controls.h );
         }
 
-        if ( y > 0 )
+        for ( var i = 0; i < positions.length; i += 3 )
         {
-          y = 0;
-          // TODO: actual collision checks
-        }
-        return [x, y, z];
-      }
-
-      function accel( particle, t0, t1 )
-      {
-        var g = -9.81;
-        var ext = 0;
-        var tot = g + ext;
-        return tot; 
-      }
-
-
-      // camera and window setup
-      var w = window.innerWidth - 30;
-      var h = window.innerHeight - 30;
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera( 75, w/h, 0.1, 1000 );
-      const renderer = new THREE.WebGLRenderer();
-      renderer.setSize( w, h );
-      document.body.appendChild( renderer.domElement );
-      var controls = new OrbitControls( camera, renderer.domElement );
-      controls.target.set( 0, 0, 0 );
-
-      // scene setup
-      const temp_geometry = new THREE.BoxGeometry(n, n, n);
-      var material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
-      const cube = new THREE.Mesh( temp_geometry, material );
-      var edges = new THREE.EdgesHelper( cube, 0xff00ff );
-      edges.material.linewidth = 2;
-      scene.add(edges); 
-
-      const geometry = new THREE.BufferGeometry();
-      const vertices = [];
-      const num_particles_sqrt = 10;
-      const num_particles = num_particles_sqrt ** 2;
-
-      for ( var i = 0; i <= num_particles_sqrt; i++ )
-      {
-        for ( var j = 0; j <= num_particles_sqrt; j++ )
-        {
-          for ( var k = 0; k < 1; k++ )
-          {
-            const x = ( lerp(n/2 * -1 + 0.02, n/2 - 0.02, i/num_particles_sqrt) ); // x
-            const y = ( n/2 + k ); // y
-            const z = ( lerp(n/2 * -1 + 0.02, n/2 - 0.02, j/num_particles_sqrt) ); // z
-            vertices.push( x, y, z );
-          }
-        }
-      }
-
-      const particles = [];
-      material = new THREE.PointsMaterial( { size: 0.05, blending: THREE.AdditiveBlending, depthTest: false, transparent: true } );
-      material.color.setRGB( 0, 0, 1 );
-      geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
-      for ( var i = 0; i < num_particles; i++ )
-      {
-        var particle = new THREE.Points( geometry, material );
-        particle.velocity = new THREE.Vector3(0, 0, 0);
-        particles.push( particle );
-        scene.add( particle );
-      }
-
-
-      camera.position.z = 2;
-      camera.position.x = 1;
-      camera.position.y = 1;
-      camera.lookAt(0, 0, 0);
-      
-      var timer = new THREE.Clock();
-      var t0 = 0;
-
-      function animate() {
-          requestAnimationFrame( animate );
-          var t1 = timer.getElapsedTime();
-
-          for ( var i = 0; i < particles.length; i++ )
-          {
+            // get particle's info
+            cur_pos.x = positions[i];
+            cur_pos.y = positions[i + 1];
+            cur_pos.z = positions[i + 2]; 
+            vel.x = velocities_x[Math.floor(i / 3)];
+            vel.y = velocities_y[Math.floor(i / 3)];
+            vel.z = velocities_z[Math.floor(i / 3)];
+            // do processing on the vec3
+            temp = integrate(cur_pos, vel, t);
+            cur_pos.x =  temp.x ;
+            cur_pos.y =  temp.y ;
+            cur_pos.z =  temp.z ;
+            // TODO
+            f.set(0, 0, 0);
+            f.add( f_gravity() ); 
+            p = f_pressure( positions, pressures, densities, i, param_controls.h );
+            p.multiplyScalar( param_controls.k );
+            f.add( p );
             
-            const particle = particles[i];
-            var coords = get_new_pos( particle, t0, t1 );
-            particle.position.x = coords[0];
-            particle.position.y = coords[1];
-            particle.position.z = coords[2];
-          }
+            d = densities[i]
+            
+            new_pressures[ Math.floor(i / 3) ] = param_controls.k * ((d/30)**7 - 1);// TODO
+            
+            var v = f_viscosity(positions, velocities_x, velocities_y, velocities_z, densities, i, param_controls.h );
+            v.multiplyScalar( param_controls.mu );
+            f.add( v );
+            //f.add( f_surface(positions, i, p_radius * param_controls.search_radius_multiplier ) );
+            temp = integrate(vel, f, t);
+            vel.x = temp.x ;
+            vel.y = temp.y ;
+            vel.z = temp.z ;
 
-          t0 = t1;
+            //f.multiplyScalar( 1/1000000000 );
 
-          renderer.render( scene, camera );
-      }
-      animate();
+            // check bounds and collide with the wall if we are out
+            if ( cur_pos.y < -n / 2 )
+            {
+                cur_pos.y = -n / 2 + 0.05;
+                vel.y = -vel.y * collision_loss;
+            } 
+            else if ( cur_pos.y > n / 2 )
+            {
+                cur_pos.y = n / 2 - 0.05;
+                vel.y = -vel.y * collision_loss;
+            } 
+            if ( cur_pos.x < -n / 2 )
+            {
+                cur_pos.x = -n / 2 + 0.05;
+                vel.x = -vel.x * collision_loss;
+            } 
+            else if ( cur_pos.x > n / 2 )
+            {
+                cur_pos.x = n / 2 - 0.05; 
+                vel.x = -vel.x * collision_loss;
+            } 
+            if ( cur_pos.z < -n / 2 )
+            {
+                cur_pos.z = -n / 2 + 0.05;
+                vel.z = -vel.z * collision_loss;
+            } 
+            else if ( cur_pos.z > n / 2 )
+            {
+                cur_pos.z = n / 2 - 0.05;
+                vel.z = -vel.z * collision_loss;
+            } 
+            
+            // set update values
+            new_positions[i] = cur_pos.x;
+            new_positions[i + 1] = cur_pos.y;
+            new_positions[i + 2] = cur_pos.z;
+            new_velocities_x[Math.floor(i / 3)] = vel.x;
+            new_velocities_y[Math.floor(i / 3)] = vel.y;
+            new_velocities_z[Math.floor(i / 3)] = vel.z;
+        }
+        // update values
+        for ( var i = 0; i < pressures.length; i++ )
+        {
+            pressures[i] = new_pressures[i];
+            velocities_x[i] = new_velocities_x[i];
+            velocities_y[i] = new_velocities_y[i];
+            velocities_z[i] = new_velocities_z[i];
+        }
+        for ( var i = 0; i < positions.length; i++ )
+        {
+            positions[i] = new_positions[i];
+        }
+        update_marching_cubes( t1, param_controls );
+        t0 = t1;
+        renderer.render( scene, camera );
+    }
+    animate();
 
 </script>
 </body>
