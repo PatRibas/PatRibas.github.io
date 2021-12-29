@@ -56,7 +56,17 @@
             const camera = new THREE.OrthographicCamera( -512, 512, 256, -256, 1, 1000 );
             
             const renderer = new THREE.WebGLRenderer();
-            renderer.setSize( 1024, 512 );
+            var w = window.innerWidth;
+            var h = window.innerHeight;
+            var x, y;
+            x = w - 30;
+            y = x/2;
+            if ( x > 1024 && y > 512 )
+            {
+                x = 1024;
+                y = 512;
+            }
+            renderer.setSize( x, y );
             document.body.appendChild( renderer.domElement );
 
             var n = 50;
