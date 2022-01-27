@@ -10,6 +10,38 @@
   <style>
     body { text-align: center; }
   </style>
+<script type="x-shader/x-vertex" id="vertexshader">
+
+    in vec3 pColor;
+    in vec3 position;
+    out vec3 color;
+
+    void main() {
+
+        color = pColor;
+
+        vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+
+        gl_PointSize = size * ( 300.0 / -mvPosition.z );
+
+        gl_Position = projectionMatrix * mvPosition;
+
+    }
+
+</script>
+
+<script type="x-shader/x-fragment" id="fragmentshader">
+
+    in vec3 color;
+
+    void main() {
+
+        gl_FragColor = vec4( color, 1.0 );
+
+    }
+
+</script>
+
 <script type="text/javascript" src="../js/dat.gui.min.js"></script>
 <script type="module">
     import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.126.1/build/three.module.js";
@@ -19,30 +51,17 @@
     {
         constructor(x, y, z, maxTime, velocity)
         {
-        this.particle = new THREE.PointLight( 0xffff00, 1, 0 );
-        this.particle.decay = 2;
-        // either a geometry or a THREE.Points must exist for this
-        // to be rendered instead of just cast shadows on other things.
-        // Geometry is easier to add shape and opacity to.
-        this.particle.add( new THREE.Mesh(
-            new THREE.SphereGeometry(0.01, 6, 6),
-            new THREE.MeshBasicMaterial({ color: 0xffff00 }) 
-        ));
-        this.offset = new THREE.Vector3(x, y, z);
-        this.particle.children[0].material.transparent = true;
-        this.particle.children[0].material.opacity = 0.75;
-        this.position = this.particle.position;
-        this.velocity = velocity;
-        this.setPosition();
-        this.maxTime = maxTime;
-        scene.add(this.particle);
-        this.timer = new THREE.Clock();
-        //this.particle.material = material = new THREE.PointsMaterial( { size: 0.05, blending: THREE.AdditiveBlending, depthTest: false, transparent: true } );
-        //this.particle.material.color.setRGB( 0, 0, 1 );
+            this.offset = new THREE.Vector3(x, y, z);
+            this.position = new THREE.Vector3(0, 0, 0);
+            this.velocity = velocity;
+            this.setPosition();
+            this.maxTime = maxTime;
+            this.timer = new THREE.Clock();
+            this.color = new THREE.Color();
         }
         getTime()
         {
-        return this.timer.getElapsedTime();
+            return this.timer.getElapsedTime();
         }
 
         shouldDie()
@@ -67,12 +86,9 @@
 
         updateColor()
         {
-            var c1 = this.particle.color;
-            var c2 = this.particle.children[0].material.color;
             var ratio = this.getTime()/this.maxTime ;
             var new_g = lerp( 1.0, 0.0, ratio);
-            c1.g = new_g;
-            c2.g = new_g;
+            this.color.g = new_g ;
         }
 
         updatePosition()
@@ -163,11 +179,6 @@
     var controls = new OrbitControls( camera, renderer.domElement );
     controls.target.set( 0, 0, 0 );
 
-    const geometry = new THREE.BoxGeometry( 0.3, 0.3, 0.3 );
-    const material = new THREE.MeshPhongMaterial( {color: 0xffffff} );
-    const cube = new THREE.Mesh( geometry, material );
-    //scene.add( cube );
-
     // scene setup
     camera.position.z = 2;
     camera.position.x = 0;
@@ -176,28 +187,49 @@
     
     var timer = new THREE.Clock();
     var t0 = 0;
-    var num_particles = 1000;
+    var num_particles = 10000;
     var particles = [];
+    var geo = [];
+    var color = [];
+    var p;
     for ( var i = 0; i < num_particles; i++ )
     {
-        particles.push( new Particle(Math.random() / 32, //x
+        p = new Particle (Math.random() / 32, //x
                                      Math.random() / 32, //y
                                      Math.random() / 32, //z
                                      Math.random() * 2, //lifetime
-                                     generate_velocity()
-                                    ));
+                                     generate_velocity() );
+        particles.push( p );
+        geo.push( p.position.x, p.position.y, p.position.z );
+        color.push( p.color.r, p.color.g, p.color.b );
     }
     
-    var t;
-    particles[0].updateColor();
-    var v;
+    // init particle system
+    //const material = new THREE.PointsMaterial( { size: 0.1, blending: THREE.AdditiveBlending, depthTest: false, transparent: true, opacity: 0.25 } );
+    const material = new THREE.ShaderMaterial( {
+        vertexShader: document.getElementById( 'vertexShader' ).textContent,
+        fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+    });
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( geo, 3 ) );
+    geometry.setAttribute( 'color', new THREE.Float32BufferAttribute( color, 3 ) );
+    const particle_system = new THREE.Points( geometry, material );
+    scene.add( particle_system );
+
+    var t, v;
+    var positions = particle_system.geometry.attributes.position.array;
+    var colors = particle_system.geometry.attributes.color.array;
+    //particles[0].updateColor();
 
     function animate() {
         requestAnimationFrame( animate );
+        particle_system.geometry.attributes.position.needsUpdate = true;
+        particle_system.geometry.attributes.color.needsUpdate = true;
         var t1 = timer.getElapsedTime();
         t = t1 - t0;
         v = new THREE.Vector3(0, vel_controls.gravity, 0);
         
+        // main loop for each particle
         for ( var i = 0; i < num_particles; i++ )
         {
             var particle = particles[i];
@@ -209,10 +241,14 @@
                                generate_velocity());
             }
             particle.updateColor();
-            
             particle.updateVelocity( v );
             particle.updatePosition();
-            
+            positions[(i * 3)] = particle.position.x;
+            positions[(i * 3) + 1] = particle.position.y;
+            positions[(i * 3) + 2] = particle.position.z;
+            colors[(i * 3)] = particle.color.r;
+            colors[(i * 3) + 1] = particle.color.g;
+            colors[(i * 3) + 2] = particle.color.b;
         }
 
         t0 = t1;
