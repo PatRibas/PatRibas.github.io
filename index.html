@@ -19,10 +19,10 @@
         </h1>
         <p>
             Hello! 
-            I am a 4th year BS/MS dual degree student in Computer Science at RIT,
-             with a focus on computer graphics. 
-             This raw CSS/HTML website serves as a bit of a portfolio, 
-             with some little projects here and there.
+            I am a Master's student in Computer Science at RIT,
+            with a focus on computer graphics. 
+            This raw CSS/HTML website serves as a bit of a portfolio, 
+            with some projects here and there.
             <br>
         </p>
     </div>
@@ -53,7 +53,7 @@
             }
 
             const scene = new THREE.Scene();
-            const camera = new THREE.OrthographicCamera( -512, 512, 256, -256, 1, 1000 );
+            const camera = new THREE.OrthographicCamera( -512, 512, 256, -256, 1.0, 1000 );
             
             const renderer = new THREE.WebGLRenderer();
             var w = window.innerWidth;
@@ -69,14 +69,26 @@
             renderer.setSize( x, y );
             document.body.appendChild( renderer.domElement );
 
+            // actual scene code
+            const light = new THREE.PointLight(0xffffff, 2)
+            light.position.set(10, 10, 10)
+            scene.add(light)
+
+            const light2 = new THREE.PointLight(0xffffff, 2)
+            light2.position.set(-10, -10, -10)
+            scene.add(light2)
+
+            const light3 = new THREE.AmbientLight( 0x303030 ); // soft white light
+            scene.add( light3 );
+
             var n = 50;
             const geometry = new THREE.BoxGeometry(n, n, n);
             var materials = [];
-            var material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+            var material = new THREE.MeshPhongMaterial( { color: 0xffff00 } );
             const cube = new THREE.Mesh( geometry, material );
             scene.add( cube );
 
-            camera.position.z = -30;
+            camera.position.z = -50;
             camera.position.x = 0;
             camera.position.y = 0;
             
@@ -101,23 +113,26 @@
                 if (cube.position.x >= 512 - n/2 )
                 {
                     dir.x = -dir.x;
-                    cube.material = new THREE.MeshBasicMaterial( { color: Math.floor(Math.random()*16777215) } );
+                    cube.material = new THREE.MeshPhongMaterial( { color: Math.floor(Math.random()*16777215) } );
                 }
                 if (cube.position.y >= 256 - n/2 )
                 {
                     dir.y = -dir.y;
-                    cube.material = new THREE.MeshBasicMaterial( { color: Math.floor(Math.random()*16777215) } );
+                    cube.material = new THREE.MeshPhongMaterial( { color: Math.floor(Math.random()*16777215) } );
                 }
                 if (cube.position.x <= -512 + n/2 )
                 {
                     dir.x = -dir.x;
-                    cube.material = new THREE.MeshBasicMaterial( { color: Math.floor(Math.random()*16777215) } );
+                    cube.material = new THREE.MeshPhongMaterial( { color: Math.floor(Math.random()*16777215) } );
                 }
                 if (cube.position.y <= -256 + n/2 )
                 {
                     dir.y = -dir.y;
-                    cube.material = new THREE.MeshBasicMaterial( { color: Math.floor(Math.random()*16777215) } );
+                    cube.material = new THREE.MeshPhongMaterial( { color: Math.floor(Math.random()*16777215) } );
                 }
+                cube.rotation.x += 0.01;
+                cube.rotation.y += 0.01;
+                cube.rotation.z += 0.01;
                 renderer.render( scene, camera );
             }
             animate();
